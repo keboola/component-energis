@@ -26,7 +26,7 @@ class ManifestManager:
             file_metadata.file_name,
             incremental=True,
             primary_key=ManifestManager.get_primary_keys(),
-            destination="out.c-data.energis",
+            destination=f"out.c-data.{file_metadata.table_name}",
         )
 
         self.component.write_manifest(output_table)

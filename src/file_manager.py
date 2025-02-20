@@ -7,6 +7,7 @@ from dataclasses import dataclass
 @dataclass
 class FileMetadata:
     """Encapsulates output file information"""
+    table_name: str
     file_name: str
     file_path: str
 
@@ -26,12 +27,14 @@ class FileManager:
     def get_file_metadata(self) -> FileMetadata:
         """Generates file metadata containing name and full path."""
         granularity = self.get_granularity()
-        file_name = f"energis_{granularity}_data.csv"
+        table_name = f"energis_{granularity}_data"
+        file_name = f"{table_name}.csv"
         file_path = os.path.join(self.output_dir, file_name)
 
-        return FileMetadata(file_name, file_path)
+        return FileMetadata(table_name, file_name, file_path)
 
-    def save_to_csv(self, data: list[dict[str, str]], file_metadata: FileMetadata) -> None:
+    @staticmethod
+    def save_to_csv(data: list[dict[str, str]], file_metadata: FileMetadata) -> None:
         """Saves the collected data to a CSV file."""
         if not data:
             logging.warning("No data to save to CSV.")
