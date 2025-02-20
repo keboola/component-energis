@@ -1,0 +1,68 @@
+{
+    "type": "object",
+    "title": "Energis Component Configuration",
+    "required": ["authentication", "sync_options", "debug"],
+    "properties": {
+        "authentication": {
+            "type": "object",
+            "title": "Authentication Settings",
+            "required": ["username", "#password", "apiBaseUrl"],
+            "properties": {
+                "username": {
+                    "type": "string",
+                    "title": "Username",
+                    "default": "username"
+                },
+                "#password": {
+                    "type": "string",
+                    "title": "Password",
+                    "format": "password"
+                },
+                "apiBaseUrl": {
+                    "type": "string",
+                    "title": "API Base URL",
+                    "default": "https://webenergis.eu/test/1.wsc/soap"
+                }
+            }
+        },
+        "sync_options": {
+            "type": "object",
+            "title": "Synchronization Options",
+            "required": ["nodes", "date_from", "date_to", "granularity"],
+            "properties": {
+                "nodes": {
+                    "type": "array",
+                    "title": "List of Nodes",
+                    "items": {
+                        "type": "integer",
+                        "title": "Node ID"
+                    },
+                    "default": []
+                },
+                "date_from": {
+                    "type": "string",
+                    "format": "date",
+                    "title": "Date From",
+                    "default": "2024-12-01"
+                },
+                "date_to": {
+                    "type": "string",
+                    "format": "date",
+                    "title": "Date To",
+                    "default": "2025-02-01"
+                },
+                "granularity": {
+                    "type": "string",
+                    "title": "Data Granularity",
+                    "enum": ["day", "month"],
+                    "default": "day"
+                }
+            }
+        },
+        "debug": {
+            "type": "boolean",
+            "title": "Enable Debug Mode",
+            "default": false
+        }
+    }
+}

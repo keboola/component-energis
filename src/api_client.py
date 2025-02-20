@@ -1,0 +1,148 @@
+import logging
+import time
+from datetime import datetime
+
+from lxml import etree
+from zeep.transports import Transport
+from requests import Session
+from configuration import Configuration
+
+from utils import (
+    generate_logon_request,
+    generate_data_request,
+    mask_sensitive_data_in_body
+)
+
+
+class EnergisClient:
+    """Client for Energis API"""
+
+    def __init__(self, config: Configuration):
+        self.config = config
+
+        session = Session()
+        session.verify = False
+        self.transport = Transport(session=session)
+        self.max_retries = 5
+        self.retry_delay = 120  # 2 minutes
+        self.results = []  # Store all parsed results
+
+    def authenticate(self) -> str:
+        """Calls the auth endpoint and retrieves the key for further requests."""
+        body, headers = generate_logon_request(*self.config.authentication.credentials)
+        auth_url = f"{self.config.authentication.api_base_url}?logon"
+
+        if self.config.debug:
+            masked_body = mask_sensitive_data_in_body(body)
+            logging.debug("Request auth url: %s", auth_url)
+            logging.debug("Request header: %s", headers)
+            logging.debug("Request body: %s", masked_body)
+
+        retries = 0
+
+        while retries < self.max_retries:
+            try:
+                response = self.transport.post(address=auth_url, message=body, headers=headers)
+
+                if response.status_code != 200:
+                    logging.error("Authentication failed with status code %s", response.status_code)
+                    raise Exception(f"Authentication failed: {response.status_code}")
+
+                logging.debug("Authentication response: %s", response.text)
+
+                xml_response = etree.fromstring(response.content)
+                key = xml_response.xpath("//key/text()")
+
+                if key:
+                    logging.debug("Authentication successful, received key: %s", key[0][:4] + "****")
+                    return key[0]
+
+                raise Exception("Authentication failed: No key found in the response.")
+
+            except Exception as e:
+                logging.error("Authentication attempt %d failed: %s", retries + 1, str(e))
+
+                xml_response = etree.fromstring(response.content)
+                fault_string = xml_response.xpath("//faultstring/text()")
+
+                if fault_string and "již v systému přihlášen" in fault_string[0]:
+                    logging.warning("User already logged in. Waiting 120 seconds before retrying...")
+                    time.sleep(self.retry_delay)
+                    retries += 1
+                    continue
+
+                raise e
+
+        raise Exception("Maximum retries reached. Unable to authenticate.")
+
+    def fetch_data(self) -> list[dict[str, str]]:
+        """Fetches data from the Energis API using the xexport SOAP call and returns the data."""
+        key = self.authenticate()
+        nodes = self.config.sync_options.nodes
+        granularity = "m" if self.config.sync_options.granularity == "month" else "d"
+        date_from = datetime.strptime(self.config.sync_options.date_from, "%Y-%m-%d").date()
+        date_to = datetime.strptime(self.config.sync_options.date_to, "%Y-%m-%d").date()
+        data_url = f"{self.config.authentication.api_base_url}?data"
+
+        if granularity == "m":
+            start_date = date_from.replace(day=1)
+            end_date = date_to.replace(day=1)
+            months_diff = (end_date.year - start_date.year) * 12 + end_date.month - start_date.month
+
+            for i in range(months_diff + 1):
+                period = f"m-{months_diff - i}" if i < months_diff else "m"
+                body, headers = generate_data_request(
+                    username=self.config.authentication.username,
+                    key=key,
+                    nodes=nodes,
+                    granularity=granularity,
+                    period=period
+                )
+                self.send_request(data_url, body, headers)
+
+        elif granularity == "d":
+            days_diff = (date_to - date_from).days
+
+            for i in range(days_diff + 1):
+                period = f"d-{days_diff - i}" if i < days_diff else "d"
+                body, headers = generate_data_request(
+                    username=self.config.authentication.username,
+                    key=key,
+                    nodes=nodes,
+                    granularity=granularity,
+                    period=period
+                )
+                self.send_request(data_url, body, headers)
+
+        return self.results
+
+    def send_request(self, url: str, body: str, headers: dict) -> None:
+        """Sends the SOAP request, parses the response, and stores data in memory."""
+        if self.config.debug:
+            masked_body = mask_sensitive_data_in_body(body)
+            logging.debug("Request url: %s", url)
+            logging.debug("Request header: %s", headers)
+            logging.debug("Request body: %s", masked_body)
+
+        response = self.transport.post(address=url, message=body, headers=headers)
+
+        if response.status_code != 200:
+            logging.error("Data request failed with status code %s", response.status_code)
+            raise Exception(f"Data request failed: {response.status_code}")
+
+        logging.debug("Data request response: %s", response.text)
+
+        try:
+            xml_response = etree.fromstring(response.content)
+            for response_data in xml_response.xpath("//responseData"):
+                uzel = response_data.findtext("uzel")
+                hodnota = response_data.findtext("hodnota")
+                cas = response_data.findtext("cas")
+                if uzel and hodnota and cas:
+                    self.results.append({
+                        "uzel": uzel,
+                        "hodnota": hodnota,
+                        "cas": cas
+                    })
+        except Exception as e:
+            logging.warning("Failed to parse SOAP response: %s", str(e))
