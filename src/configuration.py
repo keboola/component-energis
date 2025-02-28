@@ -1,7 +1,7 @@
 import logging
 from datetime import date
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from keboola.component.exceptions import UserException
@@ -40,9 +40,9 @@ class SyncOptions(BaseModel):
         default="2020-01-01",
         description="Date from which to fetch data, default '2020-01-01'"
     )
-    date_to: str = Field(
-        default_factory=lambda: str(date.today()),
-        description="Date to which to fetch data, default 'today'"
+    date_to: Optional[str] = Field(
+        default=None,
+        description="Date to which to fetch data."
     )
     granularity: GranularityEnum = Field(
         default=GranularityEnum.day,
@@ -60,6 +60,11 @@ class SyncOptions(BaseModel):
         if value not in GranularityEnum:
             raise ValueError(f"Invalid value '{value}' for 'granularity'. Must be 'day' or 'month'")
         return value
+
+    @property
+    def resolved_date_to(self) -> str:
+        """Returns the date_to with a fallback to today's date if not set."""
+        return self.date_to or str(date.today())
 
 
 class Configuration(BaseModel):

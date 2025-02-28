@@ -6,34 +6,29 @@
         "authentication": {
             "type": "object",
             "title": "Authentication Settings",
-            "propertyOrder": 1,
             "required": ["username", "#password", "apiBaseUrl"],
             "properties": {
                 "username": {
                     "type": "string",
                     "title": "Username",
-                    "default": "",
-                    "propertyOrder": 1
+                    "default": "username"
                 },
                 "#password": {
                     "type": "string",
                     "title": "Password",
-                    "format": "password",
-                    "propertyOrder": 2
+                    "format": "password"
                 },
                 "apiBaseUrl": {
                     "type": "string",
                     "title": "API Base URL",
-                    "default": "https://webenergis.eu/test/1.wsc/soap",
-                    "propertyOrder": 3
+                    "default": "https://webenergis.eu/test/1.wsc/soap"
                 }
             }
         },
         "sync_options": {
             "type": "object",
             "title": "Synchronization Options",
-            "propertyOrder": 2,
-            "required": ["nodes", "date_from", "date_to", "granularity"],
+            "required": ["nodes", "date_from", "granularity"],
             "properties": {
                 "nodes": {
                     "type": "array",
@@ -42,37 +37,32 @@
                         "type": "integer",
                         "title": "Node ID"
                     },
-                    "default": [],
-                    "propertyOrder": 1
+                    "default": []
                 },
                 "date_from": {
                     "type": "string",
                     "format": "date",
                     "title": "Date From",
-                    "default": "2024-12-01",
-                    "propertyOrder": 2
+                    "default": "2024-12-01"
                 },
                 "date_to": {
                     "type": "string",
                     "format": "date",
                     "title": "Date To",
-                    "default": "2025-02-01",
-                    "propertyOrder": 3
+                    "description": "If not set, defaults to today's date dynamically"
                 },
                 "granularity": {
                     "type": "string",
                     "title": "Data Granularity",
                     "enum": ["day", "month"],
-                    "default": "day",
-                    "propertyOrder": 4
+                    "default": "day"
                 }
             }
         },
         "debug": {
             "type": "boolean",
             "title": "Enable Debug Mode",
-            "default": false,
-            "propertyOrder": 3
+            "default": false
         }
     }
 }
