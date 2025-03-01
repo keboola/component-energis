@@ -10,22 +10,24 @@ from configuration import Configuration
 from utils import (
     generate_logon_request,
     generate_data_request,
-    mask_sensitive_data_in_body
+    mask_sensitive_data_in_body, granularity_to_short_code
 )
 
-
 class EnergisClient:
-    """Client for Energis API"""
+    """Dynamic Client for Energis API using various WSDLs"""
 
     def __init__(self, config: Configuration):
         self.config = config
 
         session = Session()
         session.verify = False
+
         self.transport = Transport(session=session)
         self.max_retries = 5
         self.retry_delay = 120  # 2 minutes
-        self.results = []  # Store all parsed results
+        self.auth_key = None
+
+        self.results = []
 
     def authenticate(self) -> str:
         """Calls the auth endpoint and retrieves the key for further requests."""
@@ -79,7 +81,7 @@ class EnergisClient:
         """Fetches data from the Energis API using the xexport SOAP call and returns the data."""
         key = self.authenticate()
         nodes = self.config.sync_options.nodes
-        granularity = "m" if self.config.sync_options.granularity == "month" else "d"
+        granularity = granularity_to_short_code(self.config.sync_options.granularity)
         date_from = datetime.strptime(self.config.sync_options.date_from, "%Y-%m-%d").date()
         date_to = datetime.strptime(self.config.sync_options.date_to, "%Y-%m-%d").date()
         data_url = f"{self.config.authentication.api_base_url}?data"

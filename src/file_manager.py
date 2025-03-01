@@ -3,6 +3,8 @@ import csv
 import logging
 from dataclasses import dataclass
 
+from src.utils import granularity_to_filename
+
 
 @dataclass
 class FileMetadata:
@@ -20,9 +22,8 @@ class FileManager:
         self.output_dir = output_dir
 
     def get_granularity(self) -> str:
-        """Returns the granularity as a string ('month' or 'day')."""
-        granularity = self.config.sync_options.granularity
-        return "month" if granularity == granularity.month else "day"
+        """Returns the granularity as a string."""
+        return granularity_to_filename(self.config.sync_options.granularity)
 
     def get_file_metadata(self) -> FileMetadata:
         """Generates file metadata containing name and full path."""

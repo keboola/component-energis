@@ -6,18 +6,30 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from keboola.component.exceptions import UserException
 
+class EnvironmentEnum(str, Enum):
+    dev = "dev"
+    prod = "prod"
+
+ENVIRONMENT_URLS = {
+    EnvironmentEnum.dev: "https://webenergis.eu/test/1.wsc/soap",
+    EnvironmentEnum.prod: "https://bilance.c-energy.cz/cgi-bin/1.wsc/soap.r"
+}
 
 class GranularityEnum(str, Enum):
-    day = "day"
+    year = "year"
+    quarterYear = "quarterYear"
     month = "month"
-
+    day = "day"
+    hour = "hour"
+    quarterHour = "quarterHour"
+    minute = "minute"
 
 class Authentication(BaseModel):
     username: str
     password: str = Field(alias="#password")
-    api_base_url: str = Field(
-        default="https://webenergis.eu/test/1.wsc/soap",
-        description="Energis API Base URL, default 'https://webenergis.eu/test/1.wsc/soap'"
+    environment: EnvironmentEnum = Field(
+        default=EnvironmentEnum.prod,
+        description="Choose 'dev' for testing or 'prod' for production."
     )
 
     @field_validator("username", "password")
@@ -29,6 +41,11 @@ class Authentication(BaseModel):
     @property
     def credentials(self) -> tuple[str, str]:
         return self.username, self.password
+
+    @property
+    def api_base_url(self) -> str:
+        """Returns the full API base URL based on the selected environment."""
+        return ENVIRONMENT_URLS[self.environment]
 
 
 class SyncOptions(BaseModel):
@@ -58,7 +75,8 @@ class SyncOptions(BaseModel):
     @field_validator("granularity")
     def validate_granularity(cls, value: GranularityEnum) -> GranularityEnum:
         if value not in GranularityEnum:
-            raise ValueError(f"Invalid value '{value}' for 'granularity'. Must be 'day' or 'month'")
+            allowed_values = "', '".join([e.value for e in GranularityEnum])
+            raise ValueError(f"Invalid value '{value}' for 'granularity'. Must be one of {allowed_values}")
         return value
 
     @property

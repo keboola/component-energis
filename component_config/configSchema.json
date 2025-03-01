@@ -7,7 +7,7 @@
             "type": "object",
             "title": "Authentication Settings",
             "propertyOrder": 1,
-            "required": ["username", "#password", "apiBaseUrl"],
+            "required": ["username", "#password", "environment"],
             "properties": {
                 "username": {
                     "type": "string",
@@ -21,11 +21,13 @@
                     "format": "password",
                     "propertyOrder": 2
                 },
-                "apiBaseUrl": {
+                "environment": {
                     "type": "string",
-                    "title": "API Base URL",
-                    "default": "https://webenergis.eu/test/1.wsc/soap",
-                    "propertyOrder": 3
+                    "title": "API Environment",
+                    "enum": ["dev", "prod"],
+                    "default": "prod",
+                    "propertyOrder": 3,
+                    "description": "Choose 'dev' for testing or 'prod' for production."
                 }
             }
         },

@@ -1,5 +1,7 @@
 import re
 
+from src.configuration import GranularityEnum
+
 
 def mask_sensitive_data_in_body(body: str, fields_to_mask: list[str] = None, mask_char: str = "*") -> str:
     """
@@ -114,3 +116,31 @@ def generate_data_request(
     }
 
     return soap_body, headers
+
+def granularity_to_short_code(granularity: GranularityEnum) -> str:
+    """Returns a single-letter string based on the GranularityEnum value."""
+    mapping = {
+        GranularityEnum.year: "r",
+        GranularityEnum.quarterYear: "v",
+        GranularityEnum.month: "m",
+        GranularityEnum.day: "d",
+        GranularityEnum.hour: "h",
+        GranularityEnum.quarterHour: "c",
+        GranularityEnum.minute: "t"
+    }
+
+    return mapping.get(granularity)
+
+def granularity_to_filename(granularity: GranularityEnum) -> str:
+    """Returns a descriptive filename component based on the GranularityEnum value."""
+    mapping = {
+        GranularityEnum.year: "year",
+        GranularityEnum.quarterYear: "quarter",
+        GranularityEnum.month: "month",
+        GranularityEnum.day: "day",
+        GranularityEnum.hour: "hour",
+        GranularityEnum.quarterHour: "quarter_hour",
+        GranularityEnum.minute: "minute"
+    }
+
+    return mapping.get(granularity)
