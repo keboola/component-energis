@@ -2,8 +2,6 @@ import re
 from datetime import datetime, timedelta
 from typing import Generator
 
-from sympy.physics.units import years
-
 from src.configuration import GranularityEnum
 
 

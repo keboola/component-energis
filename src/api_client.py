@@ -1,6 +1,5 @@
 import logging
 import time
-from datetime import datetime
 
 from lxml import etree
 from zeep.transports import Transport
