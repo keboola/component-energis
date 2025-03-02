@@ -1,4 +1,8 @@
 import re
+from datetime import datetime, timedelta
+from typing import Generator
+
+from sympy.physics.units import years
 
 from src.configuration import GranularityEnum
 
@@ -146,3 +150,68 @@ def granularity_to_filename(granularity: GranularityEnum) -> str:
     }
 
     return mapping.get(granularity)
+
+
+def generate_periods(granularity: GranularityEnum, date_from: str, date_to: str) -> Generator[str, None, None]:
+    """
+    Generates a sequence of period strings based on the given granularity and date range.
+
+    Args:
+        granularity (GranularityEnum): The granularity level (year, month, day, etc.).
+        date_from (str): The start date in "YYYY-MM-DD" format.
+        date_to (str): The end date in "YYYY-MM-DD" format.
+
+    Returns:
+        Generator[str, None, None]: A generator yielding period strings in the format `r-1, r-2, ...` or `r`.
+    """
+    date_from = datetime.strptime(date_from, "%Y-%m-%d")
+    date_to = datetime.strptime(date_to, "%Y-%m-%d")
+
+    granularity_steps = {
+        GranularityEnum.year: (timedelta(days=365), "r-{index}"),
+        GranularityEnum.quarterYear: (timedelta(days=91), "v-{index}"),
+        GranularityEnum.month: (timedelta(days=30), "m-{index}"),  # Approximate
+        GranularityEnum.day: (timedelta(days=1), "d-{index}"),
+        GranularityEnum.hour: (timedelta(hours=1), "h-{index}"),
+        GranularityEnum.quarterHour: (timedelta(minutes=15), "c-{index}"),
+        GranularityEnum.minute: (timedelta(minutes=1), "t-{index}"),
+    }
+
+    if granularity not in granularity_steps:
+        raise ValueError(f"Unsupported granularity: {granularity}")
+
+    step, format_str = granularity_steps[granularity]
+
+    if granularity == GranularityEnum.month:
+        start_date = date_from.replace(day=1)
+        end_date = date_to.replace(day=1)
+        months_diff = (end_date.year - start_date.year) * 12 + end_date.month - start_date.month
+
+        for i in range(months_diff + 1):
+            yield f"m-{months_diff - i}" if i < months_diff else "m"
+        return  # Exit early
+
+    if granularity == GranularityEnum.year:
+        start_year = date_from.year
+        end_year = date_to.year
+        years_diff = end_year - start_year
+
+        for i in range(years_diff + 1):
+            yield f"r-{years_diff - i}" if i < years_diff else "r"
+        return
+
+    if granularity == GranularityEnum.quarterYear:
+        start_quarter = (date_from.year * 4) + (date_from.month - 1) // 3
+        end_quarter = (date_to.year * 4) + (date_to.month - 1) // 3
+        quarters_diff = end_quarter - start_quarter
+
+        for i in range(quarters_diff + 1):
+            yield f"v-{quarters_diff - i}" if i < quarters_diff else "v"
+        return
+
+    current_date = date_from
+    steps_count = (date_to - date_from) // step
+
+    for i in range(steps_count + 1):
+        yield format_str.format(index=steps_count - i) if i < steps_count else format_str[0]
+        current_date += step

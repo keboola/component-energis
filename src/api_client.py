@@ -10,7 +10,7 @@ from configuration import Configuration
 from utils import (
     generate_logon_request,
     generate_data_request,
-    mask_sensitive_data_in_body, granularity_to_short_code
+    mask_sensitive_data_in_body, granularity_to_short_code, generate_periods
 )
 
 
@@ -82,40 +82,20 @@ class EnergisClient:
         """Fetches data from the Energis API using the xexport SOAP call and returns the data."""
         key = self.authenticate()
         nodes = self.config.sync_options.nodes
-        granularity = granularity_to_short_code(self.config.sync_options.granularity)
-        date_from = datetime.strptime(self.config.sync_options.date_from, "%Y-%m-%d").date()
-        date_to = datetime.strptime(self.config.sync_options.date_to, "%Y-%m-%d").date()
+        granularity = self.config.sync_options.granularity  # Keep as Enum, not short code
+        date_from = self.config.sync_options.date_from
+        date_to = self.config.sync_options.date_to
         data_url = f"{self.config.authentication.api_base_url}?data"
 
-        if granularity == "m":
-            start_date = date_from.replace(day=1)
-            end_date = date_to.replace(day=1)
-            months_diff = (end_date.year - start_date.year) * 12 + end_date.month - start_date.month
-
-            for i in range(months_diff + 1):
-                period = f"m-{months_diff - i}" if i < months_diff else "m"
-                body, headers = generate_data_request(
-                    username=self.config.authentication.username,
-                    key=key,
-                    nodes=nodes,
-                    granularity=granularity,
-                    period=period
-                )
-                self.send_request(data_url, body, headers)
-
-        elif granularity == "d":
-            days_diff = (date_to - date_from).days
-
-            for i in range(days_diff + 1):
-                period = f"d-{days_diff - i}" if i < days_diff else "d"
-                body, headers = generate_data_request(
-                    username=self.config.authentication.username,
-                    key=key,
-                    nodes=nodes,
-                    granularity=granularity,
-                    period=period
-                )
-                self.send_request(data_url, body, headers)
+        for period in generate_periods(granularity, date_from, date_to):
+            body, headers = generate_data_request(
+                username=self.config.authentication.username,
+                key=key,
+                nodes=nodes,
+                granularity=granularity_to_short_code(granularity),
+                period=period
+            )
+            self.send_request(data_url, body, headers)
 
         return self.results
 
