@@ -13,6 +13,7 @@ from utils import (
     mask_sensitive_data_in_body, granularity_to_short_code
 )
 
+
 class EnergisClient:
     """Dynamic Client for Energis API using various WSDLs"""
 
@@ -24,7 +25,7 @@ class EnergisClient:
 
         self.transport = Transport(session=session)
         self.max_retries = 5
-        self.retry_delay = 120  # 2 minutes
+        self.retry_delay = 120
         self.auth_key = None
 
         self.results = []

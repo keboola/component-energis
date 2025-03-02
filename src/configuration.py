@@ -6,14 +6,17 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from keboola.component.exceptions import UserException
 
+
 class EnvironmentEnum(str, Enum):
     dev = "dev"
     prod = "prod"
+
 
 ENVIRONMENT_URLS = {
     EnvironmentEnum.dev: "https://webenergis.eu/test/1.wsc/soap",
     EnvironmentEnum.prod: "https://bilance.c-energy.cz/cgi-bin/1.wsc/soap.r"
 }
+
 
 class GranularityEnum(str, Enum):
     year = "year"
@@ -23,6 +26,7 @@ class GranularityEnum(str, Enum):
     hour = "hour"
     quarterHour = "quarterHour"
     minute = "minute"
+
 
 class Authentication(BaseModel):
     username: str

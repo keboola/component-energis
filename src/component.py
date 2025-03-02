@@ -4,7 +4,7 @@ import os
 from keboola.component.base import ComponentBase
 from keboola.component.exceptions import UserException
 
-from configuration import Configuration, EnvironmentEnum
+from configuration import Configuration
 from api_client import EnergisClient
 from file_manager import FileManager
 from manifest_manager import ManifestManager
