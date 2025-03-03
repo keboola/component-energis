@@ -18,6 +18,40 @@ ENVIRONMENT_URLS = {
 }
 
 
+class DatasetEnum(str, Enum):
+    xexport = "xexport"
+    xjournal = "xjournal"
+    xparam = "xparam"
+    xcorr = "xcorr"
+
+
+class EventEnum(str, Enum):
+    error = "ERROR"
+    warning = "WARNING"
+    info = "INFO"
+
+
+class PhaseEnum(str, Enum):
+    init = "INIT"
+    running = "RUNNING"
+    complete = "COMPLETE"
+
+
+class NodeTypeEnum(str, Enum):
+    sensor = "SENSOR"
+    meter = "METER"
+
+
+class ParamTypeEnum(str, Enum):
+    temperature = "TEMPERATURE"
+    power = "POWER"
+
+
+class ValueTypeEnum(str, Enum):
+    avg = "AVG"
+    sum = "SUM"
+
+
 class GranularityEnum(str, Enum):
     year = "year"
     quarterYear = "quarterYear"
@@ -26,6 +60,11 @@ class GranularityEnum(str, Enum):
     hour = "hour"
     quarterHour = "quarterHour"
     minute = "minute"
+
+
+class LanguageEnum(str, Enum):
+    en = "en"
+    cz = "cz"
 
 
 class Authentication(BaseModel):
@@ -53,6 +92,10 @@ class Authentication(BaseModel):
 
 
 class SyncOptions(BaseModel):
+    dataset: DatasetEnum = Field(
+        default=DatasetEnum.xexport,
+        description="Source dataset for data extraction"
+    )
     nodes: list[int] = Field(
         default=[],
         description="List of nodes to fetch, e.g. [7090001]"
@@ -68,6 +111,30 @@ class SyncOptions(BaseModel):
     granularity: GranularityEnum = Field(
         default=GranularityEnum.day,
         description="Granularity of fetched data, default 'day'"
+    )
+    event_type: Optional[EventEnum] = Field(
+        default=None,
+        description="Event Type of 'ERROR', 'WARNING', or 'INFO'"
+    )
+    phase: Optional[PhaseEnum] = Field(
+        default=None,
+        description="Phase Type of 'INIT', 'RUNNING', or 'COMPLETE'"
+    )
+    node_type: Optional[NodeTypeEnum] = Field(
+        default=None,
+        description="Node Type of 'SENSOR', or 'METER'"
+    )
+    param_type: Optional[ParamTypeEnum] = Field(
+        default=None,
+        description="Param Type of 'TEMPERATURE', or 'POWER'"
+    )
+    value_type: Optional[ValueTypeEnum] = Field(
+        default=None,
+        description="Value Type of 'AVG', or 'SUM'"
+    )
+    language: LanguageEnum = Field(
+        default=LanguageEnum.cz,
+        description="Language of the data outputs, 'en', or 'cz'. Default set to 'cz'"
     )
 
     @field_validator("nodes")

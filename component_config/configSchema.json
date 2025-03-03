@@ -35,8 +35,17 @@
             "type": "object",
             "title": "Synchronization Options",
             "propertyOrder": 2,
-            "required": ["nodes", "date_from", "granularity"],
+            "required": ["dataset", "nodes", "date_from", "granularity"],
             "properties": {
+                "dataset": {
+                    "type": "string",
+                    "title": "Dataset",
+                    "enum": [
+                        "xexport"
+                    ],
+                    "default": "xexport",
+                    "propertyOrder": 1
+                },
                 "nodes": {
                     "type": "array",
                     "title": "List of Nodes",
@@ -45,28 +54,83 @@
                         "title": "Node ID"
                     },
                     "default": [],
-                    "propertyOrder": 1
+                    "propertyOrder": 2
                 },
                 "date_from": {
                     "type": "string",
                     "format": "date",
                     "title": "Date From",
                     "default": "2024-12-01",
-                    "propertyOrder": 2
+                    "propertyOrder": 3
                 },
                 "date_to": {
                     "type": "string",
                     "format": "date",
                     "title": "Date To",
                     "description": "If not set, defaults to today's date dynamically",
-                    "propertyOrder": 3
+                    "propertyOrder": 4
                 },
                 "granularity": {
                     "type": "string",
                     "title": "Data Granularity",
-                    "enum": ["day", "month"],
+                    "enum": [
+                        "year",
+                        "quarterYear",
+                        "month",
+                        "day",
+                        "hour",
+                        "quarterHour",
+                        "minute"
+                    ],
                     "default": "day",
-                    "propertyOrder": 4
+                    "propertyOrder": 5
+                },
+                "event_type": {
+                    "type": "string",
+                    "title": "Event Type",
+                    "enum": [
+                        "ERROR",
+                        "WARNING",
+                        "INFO"
+                    ],
+                    "propertyOrder": 6
+                },
+                "phase": {
+                    "type": "string",
+                    "title": "Phase",
+                    "enum": [
+                        "INIT",
+                        "RUNNING",
+                        "COMPLETE"
+                    ],
+                    "propertyOrder": 7
+                },
+                "node_type": {
+                    "type": "string",
+                    "title": "Node Type",
+                    "enum": [
+                        "SENSOR",
+                        "METER"
+                    ],
+                    "propertyOrder": 8
+                },
+                "param_type": {
+                    "type": "string",
+                    "title": "Param Type",
+                    "enum": [
+                        "TEMPERATURE",
+                        "POWER"
+                    ],
+                    "propertyOrder": 9
+                },
+                "value_type": {
+                    "type": "string",
+                    "title": "Value Type",
+                    "enum": [
+                        "AVG",
+                        "SUM"
+                    ],
+                    "propertyOrder": 10
                 }
             }
         },

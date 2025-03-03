@@ -27,7 +27,7 @@ class Component(ComponentBase):
         os.makedirs(output_dir, exist_ok=True)
 
         file_manager = FileManager(config, output_dir)
-        manifest_manager = ManifestManager(self, file_manager)
+        manifest_manager = ManifestManager(self, config, file_manager)
 
         file_metadata = file_manager.get_file_metadata()
         file_manager.save_to_csv(result, file_metadata)

@@ -4,12 +4,15 @@ import time
 from lxml import etree
 from zeep.transports import Transport
 from requests import Session
-from configuration import Configuration
+from configuration import Configuration, DatasetEnum
 
 from utils import (
     generate_logon_request,
-    generate_data_request,
-    mask_sensitive_data_in_body, granularity_to_short_code, generate_periods
+    generate_xexport_request,
+    mask_sensitive_data_in_body,
+    granularity_to_short_code,
+    generate_periods,
+    generate_xjournal_request
 )
 
 
@@ -81,18 +84,33 @@ class EnergisClient:
         """Fetches data from the Energis API using the xexport SOAP call and returns the data."""
         key = self.authenticate()
         nodes = self.config.sync_options.nodes
-        granularity = self.config.sync_options.granularity  # Keep as Enum, not short code
+        dataset = self.config.sync_options.dataset
         date_from = self.config.sync_options.date_from
         date_to = self.config.sync_options.date_to
         data_url = f"{self.config.authentication.api_base_url}?data"
 
-        for period in generate_periods(granularity, date_from, date_to):
-            body, headers = generate_data_request(
+        if dataset == DatasetEnum.xexport:
+            granularity = self.config.sync_options.granularity
+
+            for period in generate_periods(granularity, date_from, date_to):
+                body, headers = generate_xexport_request(
+                    username=self.config.authentication.username,
+                    key=key,
+                    nodes=nodes,
+                    granularity=granularity_to_short_code(granularity),
+                    period=period
+                )
+                self.send_request(data_url, body, headers)
+
+        elif dataset == DatasetEnum.xjournal:
+            body, headers = generate_xjournal_request(
                 username=self.config.authentication.username,
                 key=key,
                 nodes=nodes,
-                granularity=granularity_to_short_code(granularity),
-                period=period
+                date_from=date_from,
+                date_to=date_to,
+                event_type=self.config.sync_options.event_type,
+                phase=self.config.sync_options.phase,
             )
             self.send_request(data_url, body, headers)
 
@@ -115,16 +133,43 @@ class EnergisClient:
         logging.debug("Data request response: %s", response.text)
 
         try:
+            dataset = self.config.sync_options.dataset
             xml_response = etree.fromstring(response.content)
-            for response_data in xml_response.xpath("//responseData"):
-                uzel = response_data.findtext("uzel")
-                hodnota = response_data.findtext("hodnota")
-                cas = response_data.findtext("cas")
-                if uzel and hodnota and cas:
-                    self.results.append({
-                        "uzel": uzel,
-                        "hodnota": hodnota,
-                        "cas": cas
-                    })
+
+            if dataset == DatasetEnum.xexport:
+                for response_data in xml_response.xpath("//responseData"):
+                    uzel = response_data.findtext("uzel")
+                    hodnota = response_data.findtext("hodnota")
+                    cas = response_data.findtext("cas")
+                    if uzel and hodnota and cas:
+                        self.results.append({
+                            "uzel": uzel,
+                            "hodnota": hodnota,
+                            "cas": cas
+                        })
+
+            if dataset == DatasetEnum.xjournal:
+                for response_data in xml_response.xpath("//responseData"):
+                    uzel = response_data.findtext("uzel")
+                    popisu = response_data.findtext("popisu")
+                    cas = response_data.findtext("cas")
+                    udalost = response_data.findtext("udalost")
+                    faze = response_data.findtext("faze")
+                    kp = response_data.findtext("kp")
+                    pozn = response_data.findtext("pozn")
+                    inf = response_data.findtext("inf")
+
+                    if uzel and cas and udalost:
+                        self.results.append({
+                            "uzel": uzel,
+                            "popisu": popisu,
+                            "cas": cas,
+                            "udalost": udalost,
+                            "faze": faze,
+                            "kp": kp,
+                            "pozn": pozn,
+                            "inf": inf
+                        })
+
         except Exception as e:
             logging.warning("Failed to parse SOAP response: %s", str(e))

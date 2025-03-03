@@ -28,7 +28,7 @@ class FileManager:
     def get_file_metadata(self) -> FileMetadata:
         """Generates file metadata containing name and full path."""
         granularity = self.get_granularity()
-        table_name = f"energis_{granularity}_data"
+        table_name = f"energis_{self.config.sync_options.dataset.value}_{granularity}_data"
         file_name = f"{table_name}.csv"
         file_path = os.path.join(self.output_dir, file_name)
 
