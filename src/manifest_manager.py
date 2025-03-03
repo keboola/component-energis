@@ -1,8 +1,7 @@
 import logging
 from keboola.component.base import ComponentBase
 from file_manager import FileManager
-from configuration import Configuration
-from src.configuration import DatasetEnum
+from configuration import Configuration, DatasetEnum
 
 
 class ManifestManager:

@@ -3,7 +3,7 @@ import csv
 import logging
 from dataclasses import dataclass
 
-from src.utils import granularity_to_filename
+from utils import granularity_to_filename
 
 
 @dataclass

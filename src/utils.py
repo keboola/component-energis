@@ -1,8 +1,7 @@
 import re
 from datetime import datetime, timedelta
 from typing import Generator, Optional
-
-from src.configuration import GranularityEnum, EventEnum, PhaseEnum
+from configuration import GranularityEnum, EventEnum, PhaseEnum
 
 
 def mask_sensitive_data_in_body(body: str, fields_to_mask: list[str] = None, mask_char: str = "*") -> str:
