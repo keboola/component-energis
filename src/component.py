@@ -30,10 +30,13 @@ class Component(ComponentBase):
         manifest_manager = ManifestManager(self, config, file_manager)
 
         file_metadata = file_manager.get_file_metadata()
-        file_manager.save_to_csv(result, file_metadata)
-        manifest_manager.create_manifest()
+        file_created = file_manager.save_to_csv(result, file_metadata)
 
-        logging.info(f"Data processing completed successfully for {file_metadata.file_name}")
+        if file_created:
+            manifest_manager.create_manifest()
+            logging.info(f"Data processing completed successfully for {file_metadata.file_name}")
+        else:
+            logging.info("Skipping manifest creation because no CSV file was generated.")
 
 
 """

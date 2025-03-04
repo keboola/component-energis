@@ -41,7 +41,10 @@
                     "type": "string",
                     "title": "Dataset",
                     "enum": [
-                        "xexport"
+                        "xexport",
+                        "xjournal",
+                        "xparam",
+                        "xcorr"
                     ],
                     "default": "xexport",
                     "propertyOrder": 1
@@ -70,6 +73,13 @@
                     "description": "If not set, defaults to today's date dynamically",
                     "propertyOrder": 4
                 },
+                "incremental": {
+                    "type": "boolean",
+                    "title": "Incremental?",
+                    "default": false,
+                    "description": "Set the incremental download, picking up 'date_from' as the start",
+                    "propertyOrder": 5
+                },
                 "granularity": {
                     "type": "string",
                     "title": "Data Granularity",
@@ -83,54 +93,29 @@
                         "minute"
                     ],
                     "default": "day",
-                    "propertyOrder": 5
+                    "propertyOrder": 6
                 },
                 "event_type": {
                     "type": "string",
                     "title": "Event Type",
                     "enum": [
-                        "ERROR",
-                        "WARNING",
-                        "INFO"
+                        "error",
+                        "warning",
+                        "info"
                     ],
-                    "propertyOrder": 6
+                    "default": "",
+                    "propertyOrder": 7
                 },
                 "phase": {
                     "type": "string",
                     "title": "Phase",
                     "enum": [
-                        "INIT",
-                        "RUNNING",
-                        "COMPLETE"
+                        "init",
+                        "running",
+                        "complete"
                     ],
-                    "propertyOrder": 7
-                },
-                "node_type": {
-                    "type": "string",
-                    "title": "Node Type",
-                    "enum": [
-                        "SENSOR",
-                        "METER"
-                    ],
+                    "default": "",
                     "propertyOrder": 8
-                },
-                "param_type": {
-                    "type": "string",
-                    "title": "Param Type",
-                    "enum": [
-                        "TEMPERATURE",
-                        "POWER"
-                    ],
-                    "propertyOrder": 9
-                },
-                "value_type": {
-                    "type": "string",
-                    "title": "Value Type",
-                    "enum": [
-                        "AVG",
-                        "SUM"
-                    ],
-                    "propertyOrder": 10
                 }
             }
         },

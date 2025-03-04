@@ -12,7 +12,8 @@ from utils import (
     mask_sensitive_data_in_body,
     granularity_to_short_code,
     generate_periods,
-    generate_xjournal_request
+    generate_xjournal_request,
+    convert_date_to_mmddyyyyhhmm
 )
 
 
@@ -21,6 +22,9 @@ class EnergisClient:
 
     def __init__(self, config: Configuration):
         self.config = config
+
+        logging.getLogger("zeep").setLevel(logging.INFO)
+        logging.getLogger("zeep.transport").setLevel(logging.WARNING)
 
         session = Session()
         session.verify = False
@@ -86,7 +90,7 @@ class EnergisClient:
         nodes = self.config.sync_options.nodes
         dataset = self.config.sync_options.dataset
         date_from = self.config.sync_options.date_from
-        date_to = self.config.sync_options.date_to
+        date_to = self.config.sync_options.resolved_date_to
         data_url = f"{self.config.authentication.api_base_url}?data"
 
         if dataset == DatasetEnum.xexport:
@@ -107,8 +111,8 @@ class EnergisClient:
                 username=self.config.authentication.username,
                 key=key,
                 nodes=nodes,
-                date_from=date_from,
-                date_to=date_to,
+                date_from=convert_date_to_mmddyyyyhhmm(date_from),
+                date_to=convert_date_to_mmddyyyyhhmm(date_to),
                 event_type=self.config.sync_options.event_type,
                 phase=self.config.sync_options.phase,
             )

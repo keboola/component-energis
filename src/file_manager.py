@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass
 
 from utils import granularity_to_filename
+from configuration import DATASET_OUTPUT_FIELDS
 
 
 @dataclass
@@ -34,14 +35,18 @@ class FileManager:
 
         return FileMetadata(table_name, file_name, file_path)
 
-    @staticmethod
-    def save_to_csv(data: list[dict[str, str]], file_metadata: FileMetadata) -> None:
-        """Saves the collected data to a CSV file."""
-        if not data:
-            logging.warning("No data to save to CSV.")
-            return
+    def save_to_csv(self, data: list[dict[str, str]], file_metadata: FileMetadata) -> bool:
+        """
+        Saves the collected data to a CSV file and returns whether the file was created.
 
-        fieldnames = ["uzel", "hodnota", "cas"]
+        Returns:
+            bool: True if the file was created, False if skipped.
+        """
+        if not data:
+            logging.info("No data to save to CSV.")
+            return False
+
+        fieldnames = DATASET_OUTPUT_FIELDS.get(self.config.sync_options.dataset, [])
 
         try:
             with open(file_metadata.file_path, mode="w", newline="", encoding="utf-8") as csv_file:
@@ -50,6 +55,8 @@ class FileManager:
                 writer.writerows(data)
 
             logging.info("Data successfully saved to %s", file_metadata.file_path)
+            return True
 
         except Exception as e:
             logging.error("Failed to save data to CSV: %s", str(e))
+            return False

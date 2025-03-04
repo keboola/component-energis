@@ -3,7 +3,7 @@ from datetime import date
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 from keboola.component.exceptions import UserException
 
 
@@ -13,7 +13,7 @@ class EnvironmentEnum(str, Enum):
 
 
 ENVIRONMENT_URLS = {
-    EnvironmentEnum.dev: "https://webenergis.eu/test/1.wsc/soap",
+    EnvironmentEnum.dev: "https://webenergis.eu/test/1.wsc/soap.r",
     EnvironmentEnum.prod: "https://bilance.c-energy.cz/cgi-bin/1.wsc/soap.r"
 }
 
@@ -25,31 +25,63 @@ class DatasetEnum(str, Enum):
     xcorr = "xcorr"
 
 
+DATASET_UNIQUE_FIELDS = {
+    DatasetEnum.xexport: [
+        "uzel",
+        "cas"
+    ],
+    DatasetEnum.xjournal: [
+        "uzel",
+        "cas",
+        "udalost",
+        "faze"
+    ]
+}
+
+DATASET_OUTPUT_FIELDS = {
+    DatasetEnum.xexport: [
+        "uzel",
+        "hodnota",
+        "cas"
+    ],
+    DatasetEnum.xjournal: [
+        "uzel",
+        "popisu",
+        "cas",
+        "udalost",
+        "faze",
+        "kp",
+        "pozn",
+        "inf"
+    ]
+}
+
+
 class EventEnum(str, Enum):
-    error = "ERROR"
-    warning = "WARNING"
-    info = "INFO"
+    error = "error"
+    warning = "warning"
+    info = "info"
 
 
 class PhaseEnum(str, Enum):
-    init = "INIT"
-    running = "RUNNING"
-    complete = "COMPLETE"
+    init = "init"
+    running = "running"
+    complete = "complete"
 
 
 class NodeTypeEnum(str, Enum):
-    sensor = "SENSOR"
-    meter = "METER"
+    sensor = "sensor"
+    meter = "meter"
 
 
 class ParamTypeEnum(str, Enum):
-    temperature = "TEMPERATURE"
-    power = "POWER"
+    temperature = "temperature"
+    power = "power"
 
 
 class ValueTypeEnum(str, Enum):
-    avg = "AVG"
-    sum = "SUM"
+    avg = "avg"
+    sum = "sum"
 
 
 class GranularityEnum(str, Enum):
@@ -60,11 +92,6 @@ class GranularityEnum(str, Enum):
     hour = "hour"
     quarterHour = "quarterHour"
     minute = "minute"
-
-
-class LanguageEnum(str, Enum):
-    en = "en"
-    cz = "cz"
 
 
 class Authentication(BaseModel):
@@ -100,6 +127,10 @@ class SyncOptions(BaseModel):
         default=[],
         description="List of nodes to fetch, e.g. [7090001]"
     )
+    incremental: bool = Field(
+        default=False,
+        description="If true, replace date_to by the current_date"
+    )
     date_from: str = Field(
         default="2020-01-01",
         description="Date from which to fetch data, default '2020-01-01'"
@@ -114,27 +145,23 @@ class SyncOptions(BaseModel):
     )
     event_type: Optional[EventEnum] = Field(
         default=None,
-        description="Event Type of 'ERROR', 'WARNING', or 'INFO'"
+        description="Event Type of 'error', 'warning', or 'info'"
     )
     phase: Optional[PhaseEnum] = Field(
         default=None,
-        description="Phase Type of 'INIT', 'RUNNING', or 'COMPLETE'"
+        description="Phase Type of 'init', 'running', or 'complete'"
     )
     node_type: Optional[NodeTypeEnum] = Field(
         default=None,
-        description="Node Type of 'SENSOR', or 'METER'"
+        description="Node Type of 'sensor', or 'meter'"
     )
     param_type: Optional[ParamTypeEnum] = Field(
         default=None,
-        description="Param Type of 'TEMPERATURE', or 'POWER'"
+        description="Param Type of 'temperature', or 'power'"
     )
     value_type: Optional[ValueTypeEnum] = Field(
         default=None,
-        description="Value Type of 'AVG', or 'SUM'"
-    )
-    language: LanguageEnum = Field(
-        default=LanguageEnum.cz,
-        description="Language of the data outputs, 'en', or 'cz'. Default set to 'cz'"
+        description="Value Type of 'avg', or 'sum'"
     )
 
     @field_validator("nodes")
@@ -150,10 +177,20 @@ class SyncOptions(BaseModel):
             raise ValueError(f"Invalid value '{value}' for 'granularity'. Must be one of {allowed_values}")
         return value
 
+    @model_validator(mode="after")
+    def validate_and_set_date_to(self):
+        """Ensures date_to is always set correctly based on incremental mode."""
+        if self.incremental:
+            self.date_to = str(date.today())  # Auto-set to today's date
+        elif self.date_to is None:
+            raise ValueError("date_to must be specified when incremental=False.")
+
+        return self  # Required for model_validator
+
     @property
     def resolved_date_to(self) -> str:
-        """Returns the date_to with a fallback to today's date if not set."""
-        return self.date_to or str(date.today())
+        """Ensures date_to is always a string."""
+        return self.date_to
 
 
 class Configuration(BaseModel):

@@ -3,24 +3,69 @@ from datetime import datetime, timedelta
 from typing import Generator, Optional
 from configuration import GranularityEnum, EventEnum, PhaseEnum
 
+import logging
+
+
+class MaskSensitiveDataFilter(logging.Filter):
+    """
+    A logging filter that masks sensitive fields in log messages.
+
+    This filter scans log messages and replaces the values of specified XML fields
+    with masked characters, ensuring that sensitive data is not logged.
+
+    Attributes:
+        fields_to_mask (list[str]): The list of XML tag names whose values should be masked.
+        mask_char (str): The character used for masking sensitive values.
+    """
+
+    def __init__(self, fields_to_mask=None, mask_char="*"):
+        """
+        Initializes the filter with optional fields to mask and mask character.
+
+        Args:
+            fields_to_mask (list[str], optional): List of XML tag names to mask. Defaults to a predefined set.
+            mask_char (str, optional): The character used for masking. Defaults to "*".
+        """
+        super().__init__()
+        self.fields_to_mask = fields_to_mask or ["username", "password", "exuziv", "exklic"]
+        self.mask_char = mask_char
+
+    def filter(self, record):
+        """
+        Masks sensitive data in the log record message before it's logged.
+
+        Args:
+            record (logging.LogRecord): The log record object.
+
+        Returns:
+            bool: Always returns True to allow the log message to proceed.
+        """
+        if isinstance(record.msg, str):  # Ensure the message is a string before modifying
+            record.msg = mask_sensitive_data_in_body(record.msg, self.fields_to_mask, self.mask_char)
+        return True  # Allow the log message to pass through
+
 
 def mask_sensitive_data_in_body(body: str, fields_to_mask: list[str] = None, mask_char: str = "*") -> str:
     """
-    Masks sensitive fields in the SOAP XML body by showing only the first character.
+    Masks sensitive fields in the SOAP XML body by replacing their values with masked characters.
+
+    The function searches for XML tags that match the specified field names and replaces their
+    contents with a masked version while preserving the first character (if available).
 
     Args:
         body (str): The raw SOAP XML body as a string.
         fields_to_mask (list[str], optional): The list of XML tag names to mask.
-        Defaults to ["username", "password", "exuziv", "exklic"].
+            Defaults to ["username", "password", "exuziv", "exklic"].
         mask_char (str, optional): The character to use for masking. Defaults to "*".
 
     Returns:
-        str: The masked SOAP XML body.
+        str: The masked SOAP XML body with sensitive fields obfuscated.
     """
     if fields_to_mask is None:
         fields_to_mask = ["username", "password", "exuziv", "exklic"]
 
     for field in fields_to_mask:
+        # Regex pattern to find <field>value</field> tags
         pattern = f"<{field}>(.*?)</{field}>"
 
         def mask_match(match: re.Match) -> str:
@@ -201,6 +246,23 @@ def granularity_to_filename(granularity: GranularityEnum) -> str:
     }
 
     return mapping.get(granularity)
+
+
+def convert_date_to_mmddyyyyhhmm(date_str: str) -> str:
+    """
+    Converts a date string from 'YYYY-MM-DD' format to 'MMDDYYYYHHMM'.
+
+    Args:
+        date_str (str): Date in 'YYYY-MM-DD' format.
+
+    Returns:
+        str: Converted date in 'MMDDYYYYHHMM' format.
+    """
+    try:
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+        return date_obj.strftime("%m%d%Y0000")  # Ensures HHMM is always '0000'
+    except ValueError:
+        raise ValueError(f"Invalid date format: {date_str}. Expected format: YYYY-MM-DD")
 
 
 def generate_periods(granularity: GranularityEnum, date_from: str, date_to: str) -> Generator[str, None, None]:

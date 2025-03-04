@@ -1,7 +1,7 @@
 import logging
 from keboola.component.base import ComponentBase
 from file_manager import FileManager
-from configuration import Configuration, DatasetEnum
+from configuration import Configuration, DATASET_UNIQUE_FIELDS
 
 
 class ManifestManager:
@@ -14,12 +14,7 @@ class ManifestManager:
 
     def get_primary_keys(self) -> list[str]:
         """Returns the primary keys for a given dataset."""
-        dataset = self.config.sync_options.dataset
-
-        if dataset == DatasetEnum.xexport:
-            return ["uzel", "cas"]
-        else:
-            return []
+        return DATASET_UNIQUE_FIELDS.get(self.config.sync_options.dataset, [])
 
     def create_manifest(self):
         """
