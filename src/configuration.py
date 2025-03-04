@@ -151,18 +151,6 @@ class SyncOptions(BaseModel):
         default=None,
         description="Phase Type of 'init', 'running', or 'complete'"
     )
-    node_type: Optional[NodeTypeEnum] = Field(
-        default=None,
-        description="Node Type of 'sensor', or 'meter'"
-    )
-    param_type: Optional[ParamTypeEnum] = Field(
-        default=None,
-        description="Param Type of 'temperature', or 'power'"
-    )
-    value_type: Optional[ValueTypeEnum] = Field(
-        default=None,
-        description="Value Type of 'avg', or 'sum'"
-    )
 
     @field_validator("nodes")
     def must_not_be_empty(cls, values: List[int], info) -> List[int]:

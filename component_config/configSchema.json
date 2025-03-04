@@ -42,9 +42,7 @@
                     "title": "Dataset",
                     "enum": [
                         "xexport",
-                        "xjournal",
-                        "xparam",
-                        "xcorr"
+                        "xjournal"
                     ],
                     "default": "xexport",
                     "propertyOrder": 1
