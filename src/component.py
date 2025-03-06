@@ -9,7 +9,7 @@ from configuration import Configuration
 from api_client import EnergisClient
 from file_manager import FileManager
 from manifest_manager import ManifestManager
-from src.state_manager import StateManager
+from state_manager import StateManager
 
 
 class Component(ComponentBase):

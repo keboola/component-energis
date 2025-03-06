@@ -152,7 +152,7 @@ class SyncOptions(BaseModel):
         default=5,
         ge=1,
         le=10,
-        description="Maximum number of concurrent requests, default 3"
+        description="Maximum number of concurrent requests, default 5"
     )
 
     @field_validator("nodes")
