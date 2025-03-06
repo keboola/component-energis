@@ -41,8 +41,7 @@
                     "type": "string",
                     "title": "Dataset",
                     "enum": [
-                        "xexport",
-                        "xjournal"
+                        "xexport"
                     ],
                     "default": "xexport",
                     "propertyOrder": 1
@@ -71,13 +70,6 @@
                     "description": "If not set, defaults to today's date dynamically",
                     "propertyOrder": 4
                 },
-                "incremental": {
-                    "type": "boolean",
-                    "title": "Incremental?",
-                    "default": false,
-                    "description": "Set the incremental download, picking up 'date_from' as the start",
-                    "propertyOrder": 5
-                },
                 "granularity": {
                     "type": "string",
                     "title": "Data Granularity",
@@ -91,29 +83,16 @@
                         "minute"
                     ],
                     "default": "day",
+                    "propertyOrder": 5
+                },
+                "max_concurrent_requests": {
+                    "type": "integer",
+                    "title": "Max concurrent requests",
+                    "description": "The maximum amount of requests run concurrently at the same time",
+                    "default": 5,
+                    "minimum": 1,
+                    "maximum": 10,
                     "propertyOrder": 6
-                },
-                "event_type": {
-                    "type": "string",
-                    "title": "Event Type",
-                    "enum": [
-                        "error",
-                        "warning",
-                        "info"
-                    ],
-                    "default": "",
-                    "propertyOrder": 7
-                },
-                "phase": {
-                    "type": "string",
-                    "title": "Phase",
-                    "enum": [
-                        "init",
-                        "running",
-                        "complete"
-                    ],
-                    "default": "",
-                    "propertyOrder": 8
                 }
             }
         },

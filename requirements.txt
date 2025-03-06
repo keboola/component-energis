@@ -28,3 +28,4 @@ tzlocal==5.3
 urllib3==2.3.0
 wrapt==1.17.2
 zeep==4.3.1
+httpx==0.28.1

@@ -117,6 +117,8 @@ def generate_xexport_request(
     username: str,
     key: str,
     nodes: list[int],
+    date_from: str,
+    date_to: str,
     granularity: str,
     period: str
 ) -> tuple[str, dict[str, str]]:
@@ -127,6 +129,8 @@ def generate_xexport_request(
         username (str): The username for authentication.
         key (str): The authentication key.
         nodes (list[int]): List of node IDs to fetch data for.
+        date_from (str): Start date in MMDDYYYYHHMM format.
+        date_to (str): End date in MMDDYYYYHHMM format.
         granularity (str): The granularity of the data ('m' for month, 'd' for day).
         period (str): The specific period for data export (e.g., 'm-1', 'd-10').
 
@@ -150,7 +154,7 @@ def generate_xexport_request(
                 <uzel>{nodes_str}</uzel>
                 <typuz>2</typuz>
                 <per>{granularity}</per>
-                <cas>{period}</cas>
+                <cas>{date_from},{date_to}</cas>
                 <typhodn>hodnota</typhodn>
             </ene:xexport>
         </soap:Body>
@@ -237,7 +241,7 @@ def granularity_to_filename(granularity: GranularityEnum) -> str:
     """Returns a descriptive filename component based on the GranularityEnum value."""
     mapping = {
         GranularityEnum.year: "year",
-        GranularityEnum.quarterYear: "quarter",
+        GranularityEnum.quarterYear: "quarter_year",
         GranularityEnum.month: "month",
         GranularityEnum.day: "day",
         GranularityEnum.hour: "hour",
@@ -328,3 +332,44 @@ def generate_periods(granularity: GranularityEnum, date_from: str, date_to: str)
     for i in range(steps_count + 1):
         yield format_str.format(index=steps_count - i) if i < steps_count else format_str[0]
         current_date += step
+
+
+def format_datetime(value: str, granularity: GranularityEnum) -> str:
+    match granularity:
+        case GranularityEnum.year:
+            return value
+
+        case GranularityEnum.quarterYear:
+            quarter_map = {"I": "Q1", "II": "Q2", "III": "Q3", "IV": "Q4"}
+            quarter, year = value.split("/")
+            return f"{quarter_map.get(quarter, quarter)}/{year}"
+
+        case GranularityEnum.month:
+            return value
+
+        case GranularityEnum.day:
+            return datetime.strptime(value, "%d.%m.%Y").strftime("%Y-%m-%d")
+
+        case GranularityEnum.hour:
+            day_part, time_part = value.split(" ")
+            day = datetime.strptime(day_part, "%d.%m.%Y").strftime("%Y-%m-%d")
+            start_hour, end_hour = time_part.split("-")
+            return f"{day} {start_hour}:00 - {end_hour}:00"
+
+        case GranularityEnum.quarterHour:
+            day_part, time_part = value.split(" ")
+            day = datetime.strptime(day_part, "%d.%m.%Y").strftime("%Y-%m-%d")
+
+            start_hour, start_minute = map(int, time_part.split("-")[0].split(":"))
+            start_time = datetime.strptime(f"{start_hour}:{start_minute}", "%H:%M")
+            end_time = start_time + timedelta(minutes=15)
+
+            return f"{day} {start_time.strftime('%H:%M')}-{end_time.strftime('%H:%M')}"
+
+        case GranularityEnum.minute:
+            day_part, time_part = value.split(" ")
+            day = datetime.strptime(day_part, "%d.%m.%Y").strftime("%Y-%m-%d")
+            return f"{day} {time_part}:00"
+
+        case _:
+            raise ValueError(f"Unsupported granularity: {granularity}")

@@ -3,8 +3,9 @@ from datetime import date
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 from keboola.component.exceptions import UserException
+from state_manager import StateManager
 
 
 class EnvironmentEnum(str, Enum):
@@ -127,10 +128,6 @@ class SyncOptions(BaseModel):
         default=[],
         description="List of nodes to fetch, e.g. [7090001]"
     )
-    incremental: bool = Field(
-        default=False,
-        description="If true, replace date_to by the current_date"
-    )
     date_from: str = Field(
         default="2020-01-01",
         description="Date from which to fetch data, default '2020-01-01'"
@@ -151,6 +148,12 @@ class SyncOptions(BaseModel):
         default=None,
         description="Phase Type of 'init', 'running', or 'complete'"
     )
+    max_concurrent_requests: int = Field(
+        default=5,
+        ge=1,
+        le=10,
+        description="Maximum number of concurrent requests, default 3"
+    )
 
     @field_validator("nodes")
     def must_not_be_empty(cls, values: List[int], info) -> List[int]:
@@ -165,20 +168,10 @@ class SyncOptions(BaseModel):
             raise ValueError(f"Invalid value '{value}' for 'granularity'. Must be one of {allowed_values}")
         return value
 
-    @model_validator(mode="after")
-    def validate_and_set_date_to(self):
-        """Ensures date_to is always set correctly based on incremental mode."""
-        if self.incremental:
-            self.date_to = str(date.today())  # Auto-set to today's date
-        elif self.date_to is None:
-            raise ValueError("date_to must be specified when incremental=False.")
-
-        return self  # Required for model_validator
-
     @property
     def resolved_date_to(self) -> str:
         """Ensures date_to is always a string."""
-        return self.date_to
+        return self.date_to if self.date_to else str(date.today())
 
 
 class Configuration(BaseModel):
@@ -186,9 +179,20 @@ class Configuration(BaseModel):
     sync_options: SyncOptions
     debug: bool = False
 
-    def __init__(self, **data):
+    def __init__(self, state_manager: StateManager, **data):
         try:
             super().__init__(**data)
+
+            last_processed_date = state_manager.get_last_processed_date()
+            if last_processed_date:
+                self.sync_options.date_from = last_processed_date
+
+            if not self.sync_options.date_to:
+                self.sync_options.date_to = str(date.today())
+
+            logging.info(f"Using date_from: {self.sync_options.date_from}")
+            logging.info(f"Using date_to: {self.sync_options.date_to}")
+            logging.info(f"Using granularity: {self.sync_options.granularity.value}")
         except ValidationError as e:
             error_messages = [f"{err['loc'][0]}: {err['msg']}" for err in e.errors()]
             raise UserException(f"Validation Error: {', '.join(error_messages)}")
