@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import os
 
@@ -23,9 +22,9 @@ class Component(ComponentBase):
         data_dir = self.configuration.data_dir
         state_manager = StateManager(os.path.join(data_dir, "."))
         config = Configuration(state_manager, **self.configuration.parameters)
-        client = EnergisClient(config)
 
-        result = asyncio.run(client.fetch_data())
+        client = EnergisClient(config)
+        result = client.fetch_data()
 
         output_dir = os.path.join(data_dir, "out", "tables")
         os.makedirs(output_dir, exist_ok=True)
@@ -38,10 +37,9 @@ class Component(ComponentBase):
 
         if file_created:
             manifest_manager.create_manifest()
-            logging.info(f"Data processing completed successfully for {file_metadata.file_name}")
             state_manager.save_state(config.sync_options.date_to, data_dir)
-        else:
-            logging.info("Skipping manifest creation because no CSV file was generated.")
+
+        logging.info("Data processing completed!")
 
 
 """

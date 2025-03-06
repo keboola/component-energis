@@ -21,21 +21,12 @@ ENVIRONMENT_URLS = {
 
 class DatasetEnum(str, Enum):
     xexport = "xexport"
-    xjournal = "xjournal"
-    xparam = "xparam"
-    xcorr = "xcorr"
 
 
 DATASET_UNIQUE_FIELDS = {
     DatasetEnum.xexport: [
         "uzel",
         "cas"
-    ],
-    DatasetEnum.xjournal: [
-        "uzel",
-        "cas",
-        "udalost",
-        "faze"
     ]
 }
 
@@ -44,45 +35,8 @@ DATASET_OUTPUT_FIELDS = {
         "uzel",
         "hodnota",
         "cas"
-    ],
-    DatasetEnum.xjournal: [
-        "uzel",
-        "popisu",
-        "cas",
-        "udalost",
-        "faze",
-        "kp",
-        "pozn",
-        "inf"
     ]
 }
-
-
-class EventEnum(str, Enum):
-    error = "error"
-    warning = "warning"
-    info = "info"
-
-
-class PhaseEnum(str, Enum):
-    init = "init"
-    running = "running"
-    complete = "complete"
-
-
-class NodeTypeEnum(str, Enum):
-    sensor = "sensor"
-    meter = "meter"
-
-
-class ParamTypeEnum(str, Enum):
-    temperature = "temperature"
-    power = "power"
-
-
-class ValueTypeEnum(str, Enum):
-    avg = "avg"
-    sum = "sum"
 
 
 class GranularityEnum(str, Enum):
@@ -139,20 +93,6 @@ class SyncOptions(BaseModel):
     granularity: GranularityEnum = Field(
         default=GranularityEnum.day,
         description="Granularity of fetched data, default 'day'"
-    )
-    event_type: Optional[EventEnum] = Field(
-        default=None,
-        description="Event Type of 'error', 'warning', or 'info'"
-    )
-    phase: Optional[PhaseEnum] = Field(
-        default=None,
-        description="Phase Type of 'init', 'running', or 'complete'"
-    )
-    max_concurrent_requests: int = Field(
-        default=5,
-        ge=1,
-        le=10,
-        description="Maximum number of concurrent requests, default 5"
     )
 
     @field_validator("nodes")

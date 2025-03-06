@@ -43,7 +43,7 @@ class FileManager:
             bool: True if the file was created, False if skipped.
         """
         if not data:
-            logging.info("No data to save to CSV.")
+            logging.info("No data found")
             return False
 
         fieldnames = DATASET_OUTPUT_FIELDS.get(self.config.sync_options.dataset, [])

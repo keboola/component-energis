@@ -1,185 +1,147 @@
-import asyncio
 import logging
-import httpx
+import time
+
 from lxml import etree
+from requests import Session
+from zeep.transports import Transport
+
 from configuration import Configuration, DatasetEnum
 from utils import (
     generate_logon_request,
     generate_xexport_request,
     mask_sensitive_data_in_body,
     granularity_to_short_code,
-    generate_periods,
-    generate_xjournal_request,
     convert_date_to_mmddyyyyhhmm,
     format_datetime
 )
 
 
 class EnergisClient:
-    """Asynchronous Energis API Client with authentication and throttling."""
+    """API Client for Energis API using various WSDLs"""
 
     def __init__(self, config: Configuration):
         self.config = config
-        self.base_url = self.config.authentication.api_base_url
-        self.auth_key = None
+
+        logging.getLogger("zeep").setLevel(logging.INFO)
+        logging.getLogger("zeep.transport").setLevel(logging.WARNING)
+
+        session = Session()
+        session.verify = False
+
+        self.transport = Transport(session=session)
         self.max_retries = 5
         self.retry_delay = 120
-        self.auth_lock = asyncio.Lock()
-        self.semaphore = asyncio.Semaphore(self.config.sync_options.max_concurrent_requests)
+        self.auth_key = None
 
         self.results = []
 
-    async def authenticate(self) -> str:
+    def authenticate(self) -> str:
         """Calls the auth endpoint and retrieves the key for further requests."""
-        async with self.auth_lock:
-            if self.auth_key:
-                return self.auth_key
+        body, headers = generate_logon_request(*self.config.authentication.credentials)
+        auth_url = f"{self.config.authentication.api_base_url}?logon"
 
-            logging.info("Authenticating with the Energis API...")
-            body, headers = generate_logon_request(*self.config.authentication.credentials)
-            auth_url = f"{self.base_url}?logon"
+        if self.config.debug:
+            masked_body = mask_sensitive_data_in_body(body)
+            logging.debug("Request auth url: %s", auth_url)
+            logging.debug("Request header: %s", headers)
+            logging.debug("Request body: %s", masked_body)
 
-            if self.config.debug:
-                masked_body = mask_sensitive_data_in_body(body)
-                logging.debug("Request auth url: %s", auth_url)
-                logging.debug("Request header: %s", headers)
-                logging.debug("Request body: %s", masked_body)
+        retries = 0
 
-            async with httpx.AsyncClient(verify=False) as client:
-                retries = 0
-                while retries < self.max_retries:
-                    try:
-                        response = await client.post(auth_url, content=body.encode("utf-8"), headers=headers)
-                        response.raise_for_status()
+        while retries < self.max_retries:
+            try:
+                response = self.transport.post(address=auth_url, message=body, headers=headers)
 
-                        logging.debug("Authentication response: %s", response.text)
+                if response.status_code != 200:
+                    logging.error("Authentication failed with status code %s", response.status_code)
+                    raise Exception(f"Authentication failed: {response.status_code}")
 
-                        xml_response = etree.fromstring(response.content)
-                        key = xml_response.xpath("//key/text()")
+                logging.debug("Authentication response: %s", response.text)
 
-                        if key:
-                            self.auth_key = key[0]
-                            logging.debug("Authentication successful, received key: %s", key[0][:4] + "****")
-                            return self.auth_key
+                xml_response = etree.fromstring(response.content)
+                key = xml_response.xpath("//key/text()")
 
-                        raise Exception("Authentication failed: No key found in the response.")
+                if key:
+                    logging.debug("Authentication successful, received key: %s", key[0][:4] + "****")
+                    return key[0]
 
-                    except (httpx.HTTPStatusError, httpx.RequestError) as err:
-                        logging.error(f"Authentication attempt {retries + 1} failed: {err}")
+                raise Exception("Authentication failed: No key found in the response.")
 
-                    if "response" in locals() and response is not None:
-                        try:
-                            xml_response = etree.fromstring(response.content)
-                            fault_string = xml_response.xpath("//faultstring/text()")
+            except Exception as e:
+                logging.error("Authentication attempt %d failed: %s", retries + 1, str(e))
 
-                            if fault_string and "již v systému přihlášen" in fault_string[0]:
-                                logging.warning(f"User already logged in. Retrying after {self.retry_delay} seconds...")
-                                await asyncio.sleep(self.retry_delay)
-                                retries += 1
-                                continue
-                        except Exception:
-                            logging.warning("Failed to parse error response, retrying...")
+                xml_response = etree.fromstring(response.content)
+                fault_string = xml_response.xpath("//faultstring/text()")
 
+                if fault_string and "již v systému přihlášen" in fault_string[0]:
+                    logging.warning("User already logged in. Waiting 120 seconds before retrying...")
+                    time.sleep(self.retry_delay)
                     retries += 1
-                    await asyncio.sleep(min(self.retry_delay * (2 ** retries), 60))
+                    continue
 
-                raise Exception("Maximum retries reached. Unable to authenticate.")
+                raise e
 
-    async def fetch_data(self) -> list[dict[str, str]]:
-        """Fetches data from the Energis API using the SOAP calls and returns the data."""
-        key = await self.authenticate()
+        raise Exception("Maximum retries reached. Unable to authenticate.")
+
+    def fetch_data(self) -> list[dict[str, str]]:
+        """Fetches data from the Energis API using the xexport SOAP call and returns the data."""
+        key = self.authenticate()
         nodes = self.config.sync_options.nodes
         dataset = self.config.sync_options.dataset
         date_from = self.config.sync_options.date_from
         date_to = self.config.sync_options.resolved_date_to
-        data_url = f"{self.base_url}?data"
-
-        tasks = []
+        data_url = f"{self.config.authentication.api_base_url}?data"
 
         if dataset == DatasetEnum.xexport:
             granularity = self.config.sync_options.granularity
 
-            for period in generate_periods(granularity, date_from, date_to):
-                body, headers = generate_xexport_request(
-                    username=self.config.authentication.username,
-                    key=key,
-                    nodes=nodes,
-                    date_from=convert_date_to_mmddyyyyhhmm(date_from),
-                    date_to=convert_date_to_mmddyyyyhhmm(date_to),
-                    granularity=granularity_to_short_code(granularity),
-                    period=period
-                )
-                task = asyncio.create_task(self.send_request(data_url, body, headers))
-                tasks.append(task)
-
-        elif dataset == DatasetEnum.xjournal:
-            body, headers = generate_xjournal_request(
+            # for period in generate_periods(granularity, date_from, date_to):
+            body, headers = generate_xexport_request(
                 username=self.config.authentication.username,
                 key=key,
                 nodes=nodes,
                 date_from=convert_date_to_mmddyyyyhhmm(date_from),
                 date_to=convert_date_to_mmddyyyyhhmm(date_to),
-                event_type=self.config.sync_options.event_type,
-                phase=self.config.sync_options.phase,
+                granularity=granularity_to_short_code(granularity),
             )
-            task = asyncio.create_task(self.send_request(data_url, body, headers))
-            tasks.append(task)
-
-        if tasks:
-            await asyncio.gather(*tasks)
+            self.send_request(data_url, body, headers)
 
         return self.results
 
-    async def send_request(self, url: str, body: str, headers: dict) -> None:
-        """Sends the SOAP request asynchronously, parses the response, and stores data in memory."""
+    def send_request(self, url: str, body: str, headers: dict) -> None:
+        """Sends the SOAP request, parses the response, and stores data in memory."""
         if self.config.debug:
             masked_body = mask_sensitive_data_in_body(body)
             logging.debug("Request url: %s", url)
             logging.debug("Request header: %s", headers)
             logging.debug("Request body: %s", masked_body)
 
-        async with self.semaphore:
-            async with httpx.AsyncClient(verify=False) as client:
-                try:
-                    response = await client.post(url, content=body.encode("utf-8"), headers=headers)
-                    response.raise_for_status()
+        response = self.transport.post(address=url, message=body, headers=headers)
 
-                    logging.debug("Data request response: %s", response.text)
-                    self.parse_response(response.content)
+        if response.status_code != 200:
+            logging.error("Data request failed with status code %s", response.status_code)
+            raise Exception(f"Data request failed: {response.status_code}")
 
-                except httpx.HTTPStatusError as http_err:
-                    logging.error(f"HTTP error during data request: {http_err}")
-                except httpx.RequestError as req_err:
-                    logging.error(f"Network error during data request: {req_err}")
-                except Exception as e:
-                    logging.warning(f"Unexpected error parsing SOAP response: {str(e)}")
+        logging.debug("Data request response: %s", response.text)
 
-    def parse_response(self, content: bytes) -> None:
-        """Parses SOAP XML response and appends data to results."""
         try:
             dataset = self.config.sync_options.dataset
-            xml_response = etree.fromstring(content)
+            xml_response = etree.fromstring(response.content)
 
             if dataset == DatasetEnum.xexport:
                 for response_data in xml_response.xpath("//responseData"):
-                    self.results.append({
-                        "uzel": response_data.findtext("uzel", ""),
-                        "hodnota": response_data.findtext("hodnota", ""),
-                        "cas": format_datetime(response_data.findtext("cas", ""), self.config.sync_options.granularity)
-                    })
-
-            elif dataset == DatasetEnum.xjournal:
-                for response_data in xml_response.xpath("//responseData"):
-                    self.results.append({
-                        "uzel": response_data.findtext("uzel", ""),
-                        "popisu": response_data.findtext("popisu", ""),
-                        "cas": response_data.findtext("cas", ""),
-                        "udalost": response_data.findtext("udalost", ""),
-                        "faze": response_data.findtext("faze", ""),
-                        "kp": response_data.findtext("kp", ""),
-                        "pozn": response_data.findtext("pozn", ""),
-                        "inf": response_data.findtext("inf", "")
-                    })
+                    uzel = response_data.findtext("uzel")
+                    hodnota = response_data.findtext("hodnota")
+                    cas = response_data.findtext("cas")
+                    if uzel and hodnota and cas:
+                        self.results.append({
+                            "uzel": uzel,
+                            "hodnota": hodnota,
+                            "cas": format_datetime(
+                                response_data.findtext("cas", ""),
+                                self.config.sync_options.granularity
+                            )
+                        })
 
         except Exception as e:
-            logging.warning(f"Failed to parse SOAP response: {str(e)}")
+            logging.warning("Failed to parse SOAP response: %s", str(e))

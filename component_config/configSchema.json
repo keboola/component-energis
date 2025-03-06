@@ -84,15 +84,6 @@
                     ],
                     "default": "day",
                     "propertyOrder": 5
-                },
-                "max_concurrent_requests": {
-                    "type": "integer",
-                    "title": "Max concurrent requests",
-                    "description": "The maximum amount of requests run concurrently at the same time",
-                    "default": 5,
-                    "minimum": 1,
-                    "maximum": 10,
-                    "propertyOrder": 6
                 }
             }
         },

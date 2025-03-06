@@ -1,7 +1,8 @@
 import re
 from datetime import datetime, timedelta
-from typing import Generator, Optional
-from configuration import GranularityEnum, EventEnum, PhaseEnum
+from typing import Generator
+
+from configuration import GranularityEnum
 
 import logging
 
@@ -120,7 +121,6 @@ def generate_xexport_request(
     date_from: str,
     date_to: str,
     granularity: str,
-    period: str
 ) -> tuple[str, dict[str, str]]:
     """
     Generates the SOAP request body and headers for the xexport operation.
@@ -132,7 +132,6 @@ def generate_xexport_request(
         date_from (str): Start date in MMDDYYYYHHMM format.
         date_to (str): End date in MMDDYYYYHHMM format.
         granularity (str): The granularity of the data ('m' for month, 'd' for day).
-        period (str): The specific period for data export (e.g., 'm-1', 'd-10').
 
     Returns:
         tuple[str, dict[str, str]]: The SOAP request body and headers.
@@ -163,60 +162,6 @@ def generate_xexport_request(
     headers = {
         "Content-Type": "text/xml; charset=utf-8",
         "SOAPAction": "xexport"
-    }
-
-    return soap_body, headers
-
-
-def generate_xjournal_request(
-    username: str,
-    key: str,
-    nodes: list[int],
-    date_from: str,
-    date_to: str,
-    event_type: Optional[EventEnum] = None,
-    phase: Optional[PhaseEnum] = None,
-) -> tuple[str, dict[str, str]]:
-    """
-    Generates the SOAP request body and headers for the xjournal operation.
-
-    Args:
-        username (str): The username for authentication.
-        key (str): The authentication key.
-        nodes (list[int]): List of node IDs to fetch event logs for.
-        date_from (str): Start date in MMDDYYYYHHMM format.
-        date_to (str): End date in MMDDYYYYHHMM format.
-        event_type (Optional[EventEnum]): Filter by event type (ERROR, WARNING, INFO).
-        phase (Optional[PhaseEnum]): Filter by phase (INIT, RUNNING, COMPLETE).
-
-    Returns:
-        tuple[str, dict[str, str]]: The SOAP request body and headers.
-    """
-    nodes_str = ",".join(map(str, nodes))
-
-    soap_body = f"""<?xml version="1.0" encoding="UTF-8"?>
-    <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
-                   soap:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
-                   xmlns:ene="ENERGIS-URL">
-        <soap:Header>
-            <ene:Auth>
-                <exuziv>{username}</exuziv>
-                <exklic>{key}</exklic>
-            </ene:Auth>
-        </soap:Header>
-        <soap:Body>
-            <ene:xjournal>
-                <uzel>{nodes_str}</uzel>
-                <cas>{date_from},{date_to}</cas>
-                {f"<udalost>{event_type.value}</udalost>" if event_type else ""}
-                {f"<faze>{phase.value}</faze>" if phase else ""}
-            </ene:xjournal>
-        </soap:Body>
-    </soap:Envelope>"""
-
-    headers = {
-        "Content-Type": "text/xml; charset=utf-8",
-        "SOAPAction": "xjournal"
     }
 
     return soap_body, headers
