@@ -1,10 +1,9 @@
 import pytest
 from unittest.mock import Mock, patch
-from requests import Response
 
-from src.api_client import EnergisClient
-from src.configuration import Configuration, DatasetEnum, GranularityEnum, SyncOptions
-from src.utils import convert_date_to_mmddyyyyhhmm, granularity_to_short_code
+from api_client import EnergisClient
+from configuration import Configuration, DatasetEnum, GranularityEnum, SyncOptions
+from utils import convert_date_to_mmddyyyyhhmm, granularity_to_short_code
 
 @pytest.fixture
 def mock_config():

@@ -2,7 +2,7 @@ import pytest
 import logging
 from datetime import date
 from unittest.mock import Mock
-from src.configuration import (
+from configuration import (
     Configuration,
     Authentication,
     SyncOptions,
@@ -10,7 +10,7 @@ from src.configuration import (
     DatasetEnum,
     EnvironmentEnum
 )
-from src.state_manager import StateManager
+from state_manager import StateManager
 
 
 @pytest.fixture
@@ -25,7 +25,7 @@ def state_manager():
 def valid_auth():
     return Authentication(
         username="testuser",
-        **{"#password": "securepassword"},  # ✅ Use alias
+        **{"#password": "securepassword"},
         environment=EnvironmentEnum.prod
     )
 

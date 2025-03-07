@@ -3,7 +3,7 @@ import os
 import tempfile
 import pytest
 from datetime import datetime, timedelta
-from src.state_manager import StateManager
+from state_manager import StateManager
 
 
 @pytest.fixture

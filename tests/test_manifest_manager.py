@@ -1,8 +1,8 @@
 import pytest
 import logging
 from unittest.mock import Mock
-from src.manifest_manager import ManifestManager
-from src.configuration import Configuration, DATASET_UNIQUE_FIELDS, SyncOptions, DatasetEnum
+from manifest_manager import ManifestManager
+from configuration import Configuration, DATASET_UNIQUE_FIELDS, SyncOptions, DatasetEnum
 
 
 @pytest.fixture

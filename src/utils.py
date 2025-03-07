@@ -209,7 +209,7 @@ def convert_date_to_mmddyyyyhhmm(date_str: str) -> str:
     """
     try:
         date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-        return date_obj.strftime("%m%d%Y0000")  # Ensures HHMM is always '0000'
+        return date_obj.strftime("%m%d%Y0000")
     except ValueError:
         raise ValueError(f"Invalid date format: {date_str}. Expected format: YYYY-MM-DD")
 

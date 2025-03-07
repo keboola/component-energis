@@ -2,8 +2,8 @@ import pytest
 import os
 import logging
 from unittest.mock import Mock, patch, mock_open
-from src.file_manager import FileManager, FileMetadata
-from src.configuration import Configuration, SyncOptions, DatasetEnum, GranularityEnum
+from file_manager import FileManager, FileMetadata
+from configuration import Configuration, SyncOptions, DatasetEnum, GranularityEnum
 
 
 @pytest.fixture

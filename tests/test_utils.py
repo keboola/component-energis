@@ -1,6 +1,6 @@
 import pytest
 import logging
-from src import (
+from utils import (
     mask_sensitive_data_in_body,
     MaskSensitiveDataFilter,
     granularity_to_short_code,
@@ -11,7 +11,7 @@ from src import (
     generate_logon_request,
     generate_xexport_request
 )
-from src.configuration import GranularityEnum
+from configuration import GranularityEnum
 
 
 @pytest.mark.parametrize("input_text,expected_output", [
