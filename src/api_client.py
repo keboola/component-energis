@@ -133,6 +133,7 @@ class EnergisClient:
                     uzel = response_data.findtext("uzel")
                     hodnota = response_data.findtext("hodnota")
                     cas = response_data.findtext("cas")
+
                     if uzel and hodnota and cas:
                         self.results.append({
                             "uzel": uzel,

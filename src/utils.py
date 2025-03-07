@@ -72,7 +72,7 @@ def mask_sensitive_data_in_body(body: str, fields_to_mask: list[str] = None, mas
         def mask_match(match: re.Match) -> str:
             value = match.group(1)
             if len(value) > 1:
-                masked_value = f"{value[0].lower()}{mask_char * (len(value) - 1)}"
+                masked_value = f"{value[0].lower()}{mask_char * (len(value))}"
             else:
                 masked_value = mask_char
             return f"<{field}>{masked_value}</{field}>"
@@ -298,23 +298,50 @@ def format_datetime(value: str, granularity: GranularityEnum) -> str:
         case GranularityEnum.hour:
             day_part, time_part = value.split(" ")
             day = datetime.strptime(day_part, "%d.%m.%Y").strftime("%Y-%m-%d")
-            start_hour, end_hour = time_part.split("-")
-            return f"{day} {start_hour}:00 - {end_hour}:00"
+
+            if "-" in time_part and ":" not in time_part:
+                start_hour, end_hour = time_part.split("-")
+                formatted_start = f"{start_hour}:00"
+                formatted_end = f"{end_hour}:00"
+            else:
+                start_hour, end_hour = time_part.split("-")
+                formatted_start = start_hour if ":" in start_hour else f"{start_hour}:00"
+                formatted_end = end_hour if ":" in end_hour else f"{end_hour}:00"
+
+            return f"{day} {formatted_start}-{formatted_end}"
 
         case GranularityEnum.quarterHour:
             day_part, time_part = value.split(" ")
             day = datetime.strptime(day_part, "%d.%m.%Y").strftime("%Y-%m-%d")
 
-            start_hour, start_minute = map(int, time_part.split("-")[0].split(":"))
-            start_time = datetime.strptime(f"{start_hour}:{start_minute}", "%H:%M")
-            end_time = start_time + timedelta(minutes=15)
+            start_time, end_part = time_part.split("-")
 
-            return f"{day} {start_time.strftime('%H:%M')}-{end_time.strftime('%H:%M')}"
+            if ":" not in end_part:
+                start_hour, start_minute = start_time.split(":")
+                end_time = f"{start_hour}:{end_part}"
+            else:
+                end_time = end_part
+
+            return f"{day} {start_time}-{end_time}"
 
         case GranularityEnum.minute:
             day_part, time_part = value.split(" ")
             day = datetime.strptime(day_part, "%d.%m.%Y").strftime("%Y-%m-%d")
-            return f"{day} {time_part}:00"
+
+            if "-" in time_part:
+                start_time, end_time = time_part.split("-")
+
+                formatted_start = f"{start_time}:00" if ":" not in start_time else start_time
+
+                if ":" not in end_time:
+                    formatted_end = f"{formatted_start[:-2]}{end_time}"
+                else:
+                    formatted_end = end_time
+
+                return f"{day} {formatted_start}-{formatted_end}"
+
+            formatted_time = f"{time_part}:00" if ":" not in time_part else time_part
+            return f"{day} {formatted_time}"
 
         case _:
             raise ValueError(f"Unsupported granularity: {granularity}")
