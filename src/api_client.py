@@ -6,6 +6,7 @@ from requests import Session
 from zeep.transports import Transport
 
 from configuration import Configuration, DatasetEnum
+
 from utils import (
     generate_logon_request,
     generate_xexport_request,
@@ -32,8 +33,6 @@ class EnergisClient:
         self.max_retries = 5
         self.retry_delay = 120
         self.auth_key = None
-
-        self.results = []
 
     def authenticate(self) -> str:
         """Calls the auth endpoint and retrieves the key for further requests."""
@@ -83,7 +82,7 @@ class EnergisClient:
 
         raise Exception("Maximum retries reached. Unable to authenticate.")
 
-    def fetch_data(self) -> list[dict[str, str]]:
+    def fetch_data(self) -> iter:
         """Fetches data from the Energis API using the xexport SOAP call and returns the data."""
         key = self.authenticate()
         nodes = self.config.sync_options.nodes
@@ -95,7 +94,6 @@ class EnergisClient:
         if dataset == DatasetEnum.xexport:
             granularity = self.config.sync_options.granularity
 
-            # for period in generate_periods(granularity, date_from, date_to):
             body, headers = generate_xexport_request(
                 username=self.config.authentication.username,
                 key=key,
@@ -104,11 +102,10 @@ class EnergisClient:
                 date_to=convert_date_to_mmddyyyyhhmm(date_to),
                 granularity=granularity_to_short_code(granularity),
             )
-            self.send_request(data_url, body, headers)
 
-        return self.results
+            yield from self.send_request(data_url, body, headers)
 
-    def send_request(self, url: str, body: str, headers: dict) -> None:
+    def send_request(self, url: str, body: str, headers: dict) -> iter:
         """Sends the SOAP request, parses the response, and stores data in memory."""
         if self.config.debug:
             masked_body = mask_sensitive_data_in_body(body)
@@ -135,14 +132,14 @@ class EnergisClient:
                     cas = response_data.findtext("cas")
 
                     if uzel and hodnota and cas:
-                        self.results.append({
+                        yield {
                             "uzel": uzel,
                             "hodnota": hodnota,
                             "cas": format_datetime(
                                 response_data.findtext("cas", ""),
                                 self.config.sync_options.granularity
                             )
-                        })
+                        }
 
         except Exception as e:
             logging.warning("Failed to parse SOAP response: %s", str(e))

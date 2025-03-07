@@ -24,16 +24,16 @@ class Component(ComponentBase):
         config = Configuration(state_manager, **self.configuration.parameters)
 
         client = EnergisClient(config)
-        result = client.fetch_data()
-
         output_dir = os.path.join(data_dir, "out", "tables")
         os.makedirs(output_dir, exist_ok=True)
 
         file_manager = FileManager(config, output_dir)
         manifest_manager = ManifestManager(self, config, file_manager)
-
         file_metadata = file_manager.get_file_metadata()
-        file_created = file_manager.save_to_csv(result, file_metadata)
+
+        data_stream = client.fetch_data()
+
+        file_created = file_manager.save_to_csv(data_stream, file_metadata)
 
         if file_created:
             manifest_manager.create_manifest()

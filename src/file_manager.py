@@ -2,6 +2,7 @@ import os
 import csv
 import logging
 from dataclasses import dataclass
+from typing import Iterable
 
 from utils import granularity_to_filename
 from configuration import DATASET_OUTPUT_FIELDS
@@ -35,13 +36,15 @@ class FileManager:
 
         return FileMetadata(table_name, file_name, file_path)
 
-    def save_to_csv(self, data: list[dict[str, str]], file_metadata: FileMetadata) -> bool:
+    def save_to_csv(self, data: Iterable[dict[str, str]], file_metadata: FileMetadata) -> bool:
         """
         Saves the collected data to a CSV file and returns whether the file was created.
 
         Returns:
             bool: True if the file was created, False if skipped.
         """
+        data = list(data)
+
         if not data:
             logging.info("No data found")
             return False

@@ -46,7 +46,7 @@ def test_get_file_metadata(file_manager):
 def test_save_to_csv(mock_csv_writer, mock_open_func, file_manager, caplog):
     """Tests that save_to_csv() correctly writes data to a CSV file."""
     file_metadata = file_manager.get_file_metadata()
-    test_data = [{"uzel": "12345", "hodnota": "100", "cas": "2025-03-05 08:00"}]
+    test_data = iter([{"uzel": "12345", "hodnota": "100", "cas": "2025-03-05 08:00"}])  # Generator
 
     with caplog.at_level(logging.INFO):
         result = file_manager.save_to_csv(test_data, file_metadata)
@@ -56,7 +56,7 @@ def test_save_to_csv(mock_csv_writer, mock_open_func, file_manager, caplog):
     mock_open_func.assert_called_once_with(file_metadata.file_path, mode="w", newline="", encoding="utf-8")
 
     mock_csv_writer.return_value.writeheader.assert_called_once()
-    mock_csv_writer.return_value.writerows.assert_called_once_with(test_data)
+    mock_csv_writer.return_value.writerows.assert_called_once()
 
     assert f"Data successfully saved to {file_metadata.file_path}" in caplog.text
 
