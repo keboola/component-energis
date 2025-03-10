@@ -94,6 +94,10 @@ class SyncOptions(BaseModel):
         default=GranularityEnum.day,
         description="Granularity of fetched data, default 'day'"
     )
+    reload_full_data: bool = Field(
+        default=False,
+        description="When enabled, retrieves the complete dataset from 'date_from', bypassing incremental loading"
+    )
 
     @field_validator("nodes")
     def must_not_be_empty(cls, values: List[int], info) -> List[int]:
@@ -124,11 +128,11 @@ class Configuration(BaseModel):
             super().__init__(**data)
 
             last_processed_date = state_manager.get_last_processed_date()
-            if last_processed_date:
+            if last_processed_date and not self.sync_options.reload_full_data:
                 self.sync_options.date_from = last_processed_date
 
             if not self.sync_options.date_to:
-                self.sync_options.date_to = str(date.today())
+                self.sync_options.date_to = self.sync_options.resolved_date_to
 
             logging.info(f"Using date_from: {self.sync_options.date_from}")
             logging.info(f"Using date_to: {self.sync_options.date_to}")

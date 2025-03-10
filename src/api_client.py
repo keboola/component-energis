@@ -88,7 +88,7 @@ class EnergisClient:
         nodes = self.config.sync_options.nodes
         dataset = self.config.sync_options.dataset
         date_from = self.config.sync_options.date_from
-        date_to = self.config.sync_options.resolved_date_to
+        date_to = self.config.sync_options.date_to
         data_url = f"{self.config.authentication.api_base_url}?data"
 
         if dataset == DatasetEnum.xexport:

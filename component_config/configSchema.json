@@ -84,6 +84,13 @@
                     ],
                     "default": "day",
                     "propertyOrder": 5
+                },
+                "reload_full_data": {
+                    "type": "boolean",
+                    "title": "Reload Full Data",
+                    "description": "When enabled, retrieves the complete dataset from 'date_from', bypassing incremental loading",
+                    "default": false,
+                    "propertyOrder": 6
                 }
             }
         },

@@ -160,7 +160,7 @@ def test_send_request_success(client, mock_transport, mock_config):
     results = list(client.send_request("https://fake-api.com/data", "<soap_request>", {"Content-Type": "text/xml"}))
 
     assert len(results) == 1
-    assert results[0]["cas"] == "2025-03-06 08:00-09:00"
+    assert results[0]["cas"] == "2025-03-06 08:00"
 
 
 def test_send_request_failure(client, mock_transport):

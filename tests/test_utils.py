@@ -83,11 +83,11 @@ def test_generate_periods(granularity, start, end, expected_count):
     ("2025", GranularityEnum.year, "2025"),
     ("III/2025", GranularityEnum.quarterYear, "Q3/2025"),
     ("06.03.2025", GranularityEnum.day, "2025-03-06"),
-    ("06.03.2025 08-09", GranularityEnum.hour, "2025-03-06 08:00-09:00"),
-    ("06.03.2025 08:00-09:00", GranularityEnum.hour, "2025-03-06 08:00-09:00"),
-    ("06.03.2025 08:00-15", GranularityEnum.quarterHour, "2025-03-06 08:00-08:15"),
-    ("06.03.2025 08:00-01", GranularityEnum.minute, "2025-03-06 08:00-08:01"),
-    ("06.03.2025 08:00-08:01", GranularityEnum.minute, "2025-03-06 08:00-08:01"),
+    ("06.03.2025 08-09", GranularityEnum.hour, "2025-03-06 08:00"),
+    ("06.03.2025 08:00-09:00", GranularityEnum.hour, "2025-03-06 08:00"),
+    ("06.03.2025 08:00-15", GranularityEnum.quarterHour, "2025-03-06 08:00"),
+    ("06.03.2025 08:00-01", GranularityEnum.minute, "2025-03-06 08:00"),
+    ("06.03.2025 08:00-08:01", GranularityEnum.minute, "2025-03-06 08:00"),
 ])
 def test_format_datetime(value, granularity, expected):
     assert format_datetime(value, granularity) == expected

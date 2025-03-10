@@ -299,49 +299,19 @@ def format_datetime(value: str, granularity: GranularityEnum) -> str:
             day_part, time_part = value.split(" ")
             day = datetime.strptime(day_part, "%d.%m.%Y").strftime("%Y-%m-%d")
 
-            if "-" in time_part and ":" not in time_part:
-                start_hour, end_hour = time_part.split("-")
-                formatted_start = f"{start_hour}:00"
-                formatted_end = f"{end_hour}:00"
-            else:
-                start_hour, end_hour = time_part.split("-")
-                formatted_start = start_hour if ":" in start_hour else f"{start_hour}:00"
-                formatted_end = end_hour if ":" in end_hour else f"{end_hour}:00"
+            start_hour = time_part.split("-")[0]
+            formatted_start = start_hour if ":" in start_hour else f"{start_hour}:00"
 
-            return f"{day} {formatted_start}-{formatted_end}"
+            return f"{day} {formatted_start}"
 
-        case GranularityEnum.quarterHour:
+        case GranularityEnum.quarterHour | GranularityEnum.minute:
             day_part, time_part = value.split(" ")
             day = datetime.strptime(day_part, "%d.%m.%Y").strftime("%Y-%m-%d")
 
-            start_time, end_part = time_part.split("-")
+            start_time = time_part.split("-")[0]
+            formatted_start = start_time if ":" in start_time else f"{start_time}:00"
 
-            if ":" not in end_part:
-                start_hour, start_minute = start_time.split(":")
-                end_time = f"{start_hour}:{end_part}"
-            else:
-                end_time = end_part
-
-            return f"{day} {start_time}-{end_time}"
-
-        case GranularityEnum.minute:
-            day_part, time_part = value.split(" ")
-            day = datetime.strptime(day_part, "%d.%m.%Y").strftime("%Y-%m-%d")
-
-            if "-" in time_part:
-                start_time, end_time = time_part.split("-")
-
-                formatted_start = f"{start_time}:00" if ":" not in start_time else start_time
-
-                if ":" not in end_time:
-                    formatted_end = f"{formatted_start[:-2]}{end_time}"
-                else:
-                    formatted_end = end_time
-
-                return f"{day} {formatted_start}-{formatted_end}"
-
-            formatted_time = f"{time_part}:00" if ":" not in time_part else time_part
-            return f"{day} {formatted_time}"
+            return f"{day} {formatted_start}"
 
         case _:
             raise ValueError(f"Unsupported granularity: {granularity}")

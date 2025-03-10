@@ -19,17 +19,17 @@ it in Keboola Storage. Configure the authentication, data selection, and granula
 > **Required:** ✅ Yes  
 > **Description:** Define the dataset, time range, and data granularity for extraction.
 
-| **Property**        | **Required** | **Type**     | **Default** | **Description** |
-|--------------------|--------------|------------|------------|---------------|
-| **authentication.username** | ✅ Yes        | String | _(None)_ | Username for API authentication. |
-| **authentication.#password** | ✅ Yes        | String (password) | _(None)_ | Password for API authentication. |
-| **authentication.environment** | ✅ Yes        | Enum (`dev` / `prod`) | `prod` | Selects the API environment (development or production). |
-| **sync_options.dataset** | ✅ Yes        | Enum (`xexport`) | `xexport` | Specifies the dataset for extraction. |
-| **sync_options.nodes** | ✅ Yes        | Array of Integers | `[]` | List of node IDs for data retrieval. |
-| **sync_options.date_from** | ✅ Yes        | Date (`YYYY-MM-DD`) | `2024-12-01` | Start date for data extraction. |
-| **sync_options.date_to** | ❌ No         | Date (`YYYY-MM-DD`) | _(Today)_ | End date for data extraction. If not set, defaults to today. |
-| **sync_options.granularity** | ✅ Yes        | Enum (`year`, `quarterYear`, `month`, `day`, `hour`, `quarterHour`, `minute`) | `day` | Defines data granularity for extraction. |
-| **debug** | ❌ No         | Boolean | `false` | Enables debug mode for additional logging. |
+| **Property**                      | **Required** | **Type**     | **Default** | **Description** |
+|-----------------------------------|--------------|------------|------------|---------------|
+| **authentication.username**       | ✅ Yes        | String | _(None)_ | Username for API authentication. |
+| **authentication.#password**      | ✅ Yes        | String (password) | _(None)_ | Password for API authentication. |
+| **authentication.environment**    | ✅ Yes        | Enum (`dev` / `prod`) | `prod` | Selects the API environment (development or production). |
+| **sync_options.dataset**          | ✅ Yes        | Enum (`xexport`) | `xexport` | Specifies the dataset for extraction. |
+| **sync_options.nodes**            | ✅ Yes        | Array of Integers | `[]` | List of node IDs for data retrieval. |
+| **sync_options.date_from**        | ✅ Yes        | Date (`YYYY-MM-DD`) | `2024-12-01` | Start date for data extraction. |
+| **sync_options.date_to**          | ❌ No         | Date (`YYYY-MM-DD`) | _(Today)_ | End date for data extraction. If not set, defaults to today. |
+| **sync_options.granularity**      | ✅ Yes        | Enum (`year`, `quarterYear`, `month`, `day`, `hour`, `quarterHour`, `minute`) | `day` | Defines data granularity for extraction. |
+| **sync_options.reload_full_data** | ❌ No | Boolean| _False_      | When enabled, retrieves the complete dataset from 'date_from', bypassing incremental loading. |
 
 ## Debug Mode
 
