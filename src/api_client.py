@@ -116,8 +116,16 @@ class EnergisClient:
         response = self.transport.post(address=url, message=body, headers=headers)
 
         if response.status_code != 200:
-            logging.error("Data request failed with status code %s", response.status_code)
-            raise Exception(f"Data request failed: {response.status_code}")
+            try:
+                xml_response = etree.fromstring(response.content)
+                fault_string = xml_response.xpath("//*[local-name()='faultstring']/text()")
+                if fault_string:
+                    error_message = fault_string[0]
+                    logging.error("SOAP Fault: %s", error_message)
+                    raise Exception(f"Data request failed: {error_message}")
+            except Exception as e:
+                logging.error("Failed to parse SOAP fault response: %s", str(e))
+                raise Exception(f"Data request failed with unknown error: {response.text}")
 
         logging.debug("Data request response: %s", response.text)
 
