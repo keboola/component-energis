@@ -123,7 +123,7 @@ def test_fetch_data_failure(client, mock_transport):
         create_mock_response(500, "Internal Server Error")
     ]
 
-    with pytest.raises(Exception, match="Data request failed: 500"):
+    with pytest.raises(Exception, match="Data request failed: Internal Server Error"):
         list(client.fetch_data())
 
 
@@ -167,7 +167,7 @@ def test_send_request_failure(client, mock_transport):
     """Tests handling of HTTP error response in send_request."""
     mock_transport.post.return_value = create_mock_response(500, "Internal Server Error")
 
-    with pytest.raises(Exception, match="Data request failed: 500"):
+    with pytest.raises(Exception, match="Data request failed: Internal Server Error"):
         list(client.send_request("https://fake-api.com/data", "<soap_request>", {"Content-Type": "text/xml"}))
 
 

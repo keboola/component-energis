@@ -1,3 +1,4 @@
+import io
 import logging
 import time
 
@@ -118,36 +119,36 @@ class EnergisClient:
         if response.status_code != 200:
             try:
                 xml_response = etree.fromstring(response.content)
-                fault_string = xml_response.xpath("//*[local-name()='faultstring']/text()")
-                if fault_string:
-                    error_message = fault_string[0]
+                fault_string = xml_response.find(".//faultstring")
+                if fault_string is not None:
+                    error_message = fault_string.text
                     logging.error("SOAP Fault: %s", error_message)
                     raise Exception(f"Data request failed: {error_message}")
             except Exception as e:
                 logging.error("Failed to parse SOAP fault response: %s", str(e))
-                raise Exception(f"Data request failed with unknown error: {response.text}")
+                raise Exception(f"Data request failed: {response.text}")
 
-        logging.debug("Data request response: %s", response.text)
+        logging.debug("Data request response received")
 
         try:
             dataset = self.config.sync_options.dataset
-            xml_response = etree.fromstring(response.content)
+            context = etree.iterparse(io.BytesIO(response.content), events=("start", "end"))
 
             if dataset == DatasetEnum.xexport:
-                for response_data in xml_response.xpath("//responseData"):
-                    uzel = response_data.findtext("uzel")
-                    hodnota = response_data.findtext("hodnota")
-                    cas = response_data.findtext("cas")
+                for event, elem in context:
+                    if event == "end" and elem.tag == "responseData":
+                        uzel = elem.findtext("uzel")
+                        hodnota = elem.findtext("hodnota")
+                        cas = elem.findtext("cas")
 
-                    if uzel and hodnota and cas:
-                        yield {
-                            "uzel": uzel,
-                            "hodnota": hodnota,
-                            "cas": format_datetime(
-                                response_data.findtext("cas", ""),
-                                self.config.sync_options.granularity
-                            )
-                        }
+                        if uzel and hodnota and cas:
+                            yield {
+                                "uzel": uzel,
+                                "hodnota": hodnota,
+                                "cas": format_datetime(cas, self.config.sync_options.granularity)
+                            }
+
+                        elem.clear()
 
         except Exception as e:
             logging.warning("Failed to parse SOAP response: %s", str(e))
