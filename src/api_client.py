@@ -1,12 +1,14 @@
 import io
 import logging
 import time
+from datetime import datetime, timedelta
+from typing import Iterator, Dict, Any
 
 from lxml import etree
 from requests import Session
 from zeep.transports import Transport
 
-from configuration import Configuration, DatasetEnum
+from configuration import Configuration, DatasetEnum, GranularityEnum
 
 from utils import (
     generate_logon_request,
@@ -21,6 +23,16 @@ from utils import (
 class EnergisClient:
     """API Client for Energis API using various WSDLs"""
 
+    CHUNK_SIZE_DAYS = {
+        GranularityEnum.year: 365 * 5,
+        GranularityEnum.quarterYear: 365 * 2,
+        GranularityEnum.month: 365,
+        GranularityEnum.day: 180,
+        GranularityEnum.hour: 30,
+        GranularityEnum.quarterHour: 30,
+        GranularityEnum.minute: 7,
+    }
+
     def __init__(self, config: Configuration):
         self.config = config
 
@@ -30,7 +42,7 @@ class EnergisClient:
         session = Session()
         session.verify = False
 
-        self.transport = Transport(session=session)
+        self.transport = Transport(session=session, timeout=(30, 300))
         self.max_retries = 5
         self.retry_delay = 120
         self.auth_key = None
@@ -83,7 +95,31 @@ class EnergisClient:
 
         raise Exception("Maximum retries reached. Unable to authenticate.")
 
-    def fetch_data(self) -> iter:
+    def _generate_date_chunks(
+        self, date_from: str, date_to: str, granularity: GranularityEnum
+    ) -> Iterator[tuple[str, str]]:
+        """
+        Generates date range chunks based on the granularity to avoid large API payloads.
+
+        Args:
+            date_from: Start date in YYYY-MM-DD format
+            date_to: End date in YYYY-MM-DD format
+            granularity: The data granularity level
+
+        Yields:
+            Tuples of (chunk_start, chunk_end) dates in YYYY-MM-DD format
+        """
+        chunk_days = self.CHUNK_SIZE_DAYS.get(granularity, 30)
+        start = datetime.strptime(date_from, "%Y-%m-%d")
+        end = datetime.strptime(date_to, "%Y-%m-%d")
+
+        current_start = start
+        while current_start < end:
+            current_end = min(current_start + timedelta(days=chunk_days), end)
+            yield (current_start.strftime("%Y-%m-%d"), current_end.strftime("%Y-%m-%d"))
+            current_start = current_end + timedelta(days=1)
+
+    def fetch_data(self) -> Iterator[Dict[str, Any]]:
         """Fetches data from the Energis API using the xexport SOAP call and returns the data."""
         key = self.authenticate()
         nodes = self.config.sync_options.nodes
@@ -94,19 +130,29 @@ class EnergisClient:
 
         if dataset == DatasetEnum.xexport:
             granularity = self.config.sync_options.granularity
+            chunks = list(self._generate_date_chunks(date_from, date_to, granularity))
+            total_chunks = len(chunks)
 
-            body, headers = generate_xexport_request(
-                username=self.config.authentication.username,
-                key=key,
-                nodes=nodes,
-                date_from=convert_date_to_mmddyyyyhhmm(date_from),
-                date_to=convert_date_to_mmddyyyyhhmm(date_to),
-                granularity=granularity_to_short_code(granularity),
+            logging.info(
+                f"Splitting date range {date_from} to {date_to} into {total_chunks} chunk(s) "
+                f"for granularity '{granularity.value}'"
             )
 
-            yield from self.send_request(data_url, body, headers)
+            for chunk_idx, (chunk_start, chunk_end) in enumerate(chunks, 1):
+                logging.info(f"Processing chunk {chunk_idx}/{total_chunks}: {chunk_start} to {chunk_end}")
 
-    def send_request(self, url: str, body: str, headers: dict) -> iter:
+                body, headers = generate_xexport_request(
+                    username=self.config.authentication.username,
+                    key=key,
+                    nodes=nodes,
+                    date_from=convert_date_to_mmddyyyyhhmm(chunk_start),
+                    date_to=convert_date_to_mmddyyyyhhmm(chunk_end),
+                    granularity=granularity_to_short_code(granularity),
+                )
+
+                yield from self.send_request(data_url, body, headers)
+
+    def send_request(self, url: str, body: str, headers: dict) -> Iterator[Dict[str, Any]]:
         """Sends the SOAP request, parses the response, and stores data in memory."""
         if self.config.debug:
             masked_body = mask_sensitive_data_in_body(body)
