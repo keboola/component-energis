@@ -32,17 +32,17 @@ def mock_config():
 
 
 @pytest.fixture
-def mock_transport():
-    """Mocks Zeep's Transport.post() method."""
-    mock_transport = Mock()
-    return mock_transport
+def mock_http_client():
+    """Mocks HttpClient.post_raw() method."""
+    mock_http_client = Mock()
+    return mock_http_client
 
 
 @pytest.fixture
-def client(mock_config, mock_transport):
-    """Creates an EnergisClient instance with mocked transport."""
+def client(mock_config, mock_http_client):
+    """Creates an EnergisClient instance with mocked http_client."""
     client = EnergisClient(mock_config)
-    client.transport = mock_transport
+    client.http_client = mock_http_client
     return client
 
 
@@ -55,39 +55,39 @@ def create_mock_response(status_code, content):
     return response
 
 
-def test_authenticate_success(client, mock_transport):
+def test_authenticate_success(client, mock_http_client):
     """Tests successful authentication."""
     xml_response = """<response><key>test-api-key</key></response>"""
-    mock_transport.post.return_value = create_mock_response(200, xml_response)
+    mock_http_client.post_raw.return_value = create_mock_response(200, xml_response)
 
     auth_key = client.authenticate()
 
     assert auth_key == "test-api-key"
-    mock_transport.post.assert_called_once()
+    mock_http_client.post_raw.assert_called_once()
 
 
-def test_authenticate_failure(client, mock_transport):
+def test_authenticate_failure(client, mock_http_client):
     """Tests authentication failure with HTTP error."""
-    mock_transport.post.return_value = create_mock_response(401, "<error>Unauthorized</error>")
+    mock_http_client.post_raw.return_value = create_mock_response(401, "<error>Unauthorized</error>")
 
     with pytest.raises(Exception, match="Authentication failed: 401"):
         client.authenticate()
 
 
-def test_authenticate_retry_on_already_logged_in(client, mock_transport):
+def test_authenticate_retry_on_already_logged_in(client, mock_http_client):
     """Tests authentication retry logic when user is already logged in."""
     xml_response = """<faultstring>Uživatel již v systému přihlášen</faultstring>"""
-    mock_transport.post.return_value = create_mock_response(500, xml_response)
+    mock_http_client.post_raw.return_value = create_mock_response(500, xml_response)
 
     with patch("time.sleep", return_value=None) as mock_sleep:
         with pytest.raises(Exception, match="Maximum retries reached"):
             client.authenticate()
 
-        assert mock_transport.post.call_count == client.max_retries
+        assert mock_http_client.post_raw.call_count == client.max_retries
         mock_sleep.assert_called_with(client.retry_delay)
 
 
-def test_fetch_data_success(client, mock_transport, mock_config):
+def test_fetch_data_success(client, mock_http_client, mock_config):
     """Tests fetching and parsing of data successfully."""
     auth_xml = """<response><key>test-api-key</key></response>"""
     data_xml = """
@@ -100,7 +100,7 @@ def test_fetch_data_success(client, mock_transport, mock_config):
     </response>
     """
 
-    mock_transport.post.side_effect = [
+    mock_http_client.post_raw.side_effect = [
         create_mock_response(200, auth_xml),
         create_mock_response(200, data_xml)
     ]
@@ -115,10 +115,10 @@ def test_fetch_data_success(client, mock_transport, mock_config):
     }
 
 
-def test_fetch_data_failure(client, mock_transport):
+def test_fetch_data_failure(client, mock_http_client):
     """Tests handling of failed data request."""
     auth_xml = """<response><key>test-api-key</key></response>"""
-    mock_transport.post.side_effect = [
+    mock_http_client.post_raw.side_effect = [
         create_mock_response(200, auth_xml),
         create_mock_response(500, "Internal Server Error")
     ]
@@ -127,12 +127,12 @@ def test_fetch_data_failure(client, mock_transport):
         list(client.fetch_data())
 
 
-def test_fetch_data_invalid_xml(client, mock_transport):
+def test_fetch_data_invalid_xml(client, mock_http_client):
     """Tests handling of invalid XML response from API."""
     auth_xml = """<response><key>test-api-key</key></response>"""
     invalid_xml = "<response><invalid></invalid>"
 
-    mock_transport.post.side_effect = [
+    mock_http_client.post_raw.side_effect = [
         create_mock_response(200, auth_xml),
         create_mock_response(200, invalid_xml)
     ]
@@ -142,7 +142,7 @@ def test_fetch_data_invalid_xml(client, mock_transport):
     assert len(results) == 0
 
 
-def test_send_request_success(client, mock_transport, mock_config):
+def test_send_request_success(client, mock_http_client, mock_config):
     """Tests send_request with valid SOAP response."""
     mock_config.sync_options.granularity = GranularityEnum.hour
 
@@ -155,7 +155,7 @@ def test_send_request_success(client, mock_transport, mock_config):
         </responseData>
     </response>
     """
-    mock_transport.post.return_value = create_mock_response(200, xml_response)
+    mock_http_client.post_raw.return_value = create_mock_response(200, xml_response)
 
     results = list(client.send_request("https://fake-api.com/data", "<soap_request>", {"Content-Type": "text/xml"}))
 
@@ -163,18 +163,18 @@ def test_send_request_success(client, mock_transport, mock_config):
     assert results[0]["cas"] == "2025-03-06 08:00"
 
 
-def test_send_request_failure(client, mock_transport):
+def test_send_request_failure(client, mock_http_client):
     """Tests handling of HTTP error response in send_request."""
-    mock_transport.post.return_value = create_mock_response(500, "Internal Server Error")
+    mock_http_client.post_raw.return_value = create_mock_response(500, "Internal Server Error")
 
     with pytest.raises(Exception, match="Data request failed: Internal Server Error"):
         list(client.send_request("https://fake-api.com/data", "<soap_request>", {"Content-Type": "text/xml"}))
 
 
-def test_send_request_parsing_failure(client, mock_transport):
+def test_send_request_parsing_failure(client, mock_http_client):
     """Tests handling of parsing errors in send_request."""
     xml_response = "<response><invalid></invalid>"
-    mock_transport.post.return_value = create_mock_response(200, xml_response)
+    mock_http_client.post_raw.return_value = create_mock_response(200, xml_response)
 
     results = list(client.send_request("https://fake-api.com/data", "<soap_request>", {"Content-Type": "text/xml"}))
 

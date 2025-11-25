@@ -5,8 +5,7 @@ from datetime import datetime, timedelta
 from typing import Iterator, Dict, Any
 
 from lxml import etree
-from requests import Session
-from zeep.transports import Transport
+from keboola.http_client import HttpClient
 
 from configuration import Configuration, DatasetEnum, GranularityEnum
 
@@ -36,13 +35,12 @@ class EnergisClient:
     def __init__(self, config: Configuration):
         self.config = config
 
-        logging.getLogger("zeep").setLevel(logging.INFO)
-        logging.getLogger("zeep.transport").setLevel(logging.WARNING)
-
-        session = Session()
-        session.verify = False
-
-        self.transport = Transport(session=session, timeout=(30, 300))
+        self.http_client = HttpClient(
+            base_url=self.config.authentication.api_base_url,
+            max_retries=10,
+            backoff_factor=0.3,
+            status_forcelist=(500, 502, 504)
+        )
         self.max_retries = 5
         self.retry_delay = 120
         self.auth_key = None
@@ -62,7 +60,14 @@ class EnergisClient:
 
         while retries < self.max_retries:
             try:
-                response = self.transport.post(address=auth_url, message=body, headers=headers)
+                response = self.http_client.post_raw(
+                    endpoint_path=auth_url,
+                    data=body,
+                    headers=headers,
+                    is_absolute_path=True,
+                    timeout=(30, 300),
+                    verify=False
+                )
 
                 if response.status_code != 200:
                     logging.error("Authentication failed with status code %s", response.status_code)
@@ -160,7 +165,14 @@ class EnergisClient:
             logging.debug("Request header: %s", headers)
             logging.debug("Request body: %s", masked_body)
 
-        response = self.transport.post(address=url, message=body, headers=headers)
+        response = self.http_client.post_raw(
+            endpoint_path=url,
+            data=body,
+            headers=headers,
+            is_absolute_path=True,
+            timeout=(30, 300),
+            verify=False
+        )
 
         if response.status_code != 200:
             try:
