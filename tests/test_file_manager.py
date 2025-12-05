@@ -56,7 +56,7 @@ def test_save_to_csv(mock_csv_writer, mock_open_func, file_manager, caplog):
     mock_open_func.assert_called_once_with(file_metadata.file_path, mode="w", newline="", encoding="utf-8")
 
     mock_csv_writer.return_value.writeheader.assert_called_once()
-    mock_csv_writer.return_value.writerows.assert_called_once()
+    mock_csv_writer.return_value.writerow.assert_called_once()
 
     assert f"Data successfully saved to {file_metadata.file_path}" in caplog.text
 

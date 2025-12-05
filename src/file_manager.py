@@ -43,21 +43,22 @@ class FileManager:
         Returns:
             bool: True if the file was created, False if skipped.
         """
-        data = list(data)
-
-        if not data:
-            logging.info("No data found")
-            return False
-
         fieldnames = DATASET_OUTPUT_FIELDS.get(self.config.sync_options.dataset, [])
+        row_count = 0
 
         try:
             with open(file_metadata.file_path, mode="w", newline="", encoding="utf-8") as csv_file:
                 writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
                 writer.writeheader()
-                writer.writerows(data)
+                for row in data:
+                    writer.writerow(row)
+                    row_count += 1
 
-            logging.info("Data successfully saved to %s", file_metadata.file_path)
+            if row_count == 0:
+                logging.info("No data found")
+                return False
+
+            logging.info("Data successfully saved to %s (%d rows)", file_metadata.file_path, row_count)
             return True
 
         except Exception as e:
