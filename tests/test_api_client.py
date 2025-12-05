@@ -137,9 +137,8 @@ def test_fetch_data_invalid_xml(client, mock_transport):
         create_mock_response(200, invalid_xml)
     ]
 
-    results = list(client.fetch_data())
-
-    assert len(results) == 0
+    with pytest.raises(Exception):
+        list(client.fetch_data())
 
 
 def test_send_request_success(client, mock_transport, mock_config):
@@ -176,9 +175,8 @@ def test_send_request_parsing_failure(client, mock_transport):
     xml_response = "<response><invalid></invalid>"
     mock_transport.post.return_value = create_mock_response(200, xml_response)
 
-    results = list(client.send_request("https://fake-api.com/data", "<soap_request>", {"Content-Type": "text/xml"}))
-
-    assert len(results) == 0
+    with pytest.raises(Exception):
+        list(client.send_request("https://fake-api.com/data", "<soap_request>", {"Content-Type": "text/xml"}))
 
 
 def test_convert_date_to_mmddyyyyhhmm():

@@ -197,4 +197,5 @@ class EnergisClient:
                         elem.clear()
 
         except Exception as e:
-            logging.warning("Failed to parse SOAP response: %s", str(e))
+            logging.error("Failed to parse SOAP response: %s", str(e))
+            raise
