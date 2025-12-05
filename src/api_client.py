@@ -150,7 +150,11 @@ class EnergisClient:
                     granularity=granularity_to_short_code(granularity),
                 )
 
-                yield from self.send_request(data_url, body, headers)
+                chunk_row_count = 0
+                for row in self.send_request(data_url, body, headers):
+                    chunk_row_count += 1
+                    yield row
+                logging.info(f"Chunk {chunk_idx}/{total_chunks} completed: {chunk_row_count} rows")
 
     def send_request(self, url: str, body: str, headers: dict) -> Iterator[Dict[str, Any]]:
         """Sends the SOAP request, parses the response, and stores data in memory."""
