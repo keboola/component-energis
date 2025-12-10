@@ -1,0 +1,104 @@
+{
+    "type": "object",
+    "title": "Energis Component Configuration",
+    "required": ["authentication", "sync_options", "debug"],
+    "properties": {
+        "authentication": {
+            "type": "object",
+            "title": "Authentication Settings",
+            "propertyOrder": 1,
+            "required": ["username", "#password", "environment"],
+            "properties": {
+                "username": {
+                    "type": "string",
+                    "title": "Username",
+                    "default": "",
+                    "propertyOrder": 1
+                },
+                "#password": {
+                    "type": "string",
+                    "title": "Password",
+                    "format": "password",
+                    "propertyOrder": 2
+                },
+                "environment": {
+                    "type": "string",
+                    "title": "API Environment",
+                    "enum": ["dev", "prod"],
+                    "default": "prod",
+                    "propertyOrder": 3,
+                    "description": "Choose 'dev' for testing or 'prod' for production."
+                }
+            }
+        },
+        "sync_options": {
+            "type": "object",
+            "title": "Synchronization Options",
+            "propertyOrder": 2,
+            "required": ["dataset", "nodes", "date_from", "granularity"],
+            "properties": {
+                "dataset": {
+                    "type": "string",
+                    "title": "Dataset",
+                    "enum": [
+                        "xexport"
+                    ],
+                    "default": "xexport",
+                    "propertyOrder": 1
+                },
+                "nodes": {
+                    "type": "array",
+                    "title": "List of Nodes",
+                    "items": {
+                        "type": "integer",
+                        "title": "Node ID"
+                    },
+                    "default": [],
+                    "propertyOrder": 2
+                },
+                "date_from": {
+                    "type": "string",
+                    "format": "date",
+                    "title": "Date From",
+                    "default": "2024-12-01",
+                    "propertyOrder": 3
+                },
+                "date_to": {
+                    "type": "string",
+                    "format": "date",
+                    "title": "Date To",
+                    "description": "If not set, defaults to today's date dynamically",
+                    "propertyOrder": 4
+                },
+                "granularity": {
+                    "type": "string",
+                    "title": "Data Granularity",
+                    "enum": [
+                        "year",
+                        "quarterYear",
+                        "month",
+                        "day",
+                        "hour",
+                        "quarterHour",
+                        "minute"
+                    ],
+                    "default": "day",
+                    "propertyOrder": 5
+                },
+                "reload_full_data": {
+                    "type": "boolean",
+                    "title": "Reload Full Data",
+                    "description": "When enabled, retrieves the complete dataset from 'date_from', bypassing incremental loading",
+                    "default": false,
+                    "propertyOrder": 6
+                }
+            }
+        },
+        "debug": {
+            "type": "boolean",
+            "title": "Enable Debug Mode",
+            "default": false,
+            "propertyOrder": 3
+        }
+    }
+}
