@@ -98,6 +98,14 @@ class SyncOptions(BaseModel):
         default=False,
         description="When enabled, retrieves the complete dataset from 'date_from', bypassing incremental loading"
     )
+    destination: Optional[str] = Field(
+        default=None,
+        description="Target table in Storage (e.g., 'out.c-mybucket.mytable'). If not set, uses auto-generated name."
+    )
+    incremental: bool = Field(
+        default=True,
+        description="When enabled, data is appended to the existing table. When disabled, the table is overwritten."
+    )
 
     @field_validator("nodes")
     def must_not_be_empty(cls, values: List[int], info) -> List[int]:

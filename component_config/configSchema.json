@@ -91,6 +91,19 @@
                     "description": "When enabled, retrieves the complete dataset from 'date_from', bypassing incremental loading",
                     "default": false,
                     "propertyOrder": 6
+                },
+                "destination": {
+                    "type": "string",
+                    "title": "Destination Table",
+                    "description": "Target table in Storage (e.g., 'out.c-mybucket.mytable'). If not set, defaults to 'out.c-data.energis_{dataset}_{granularity}_data'",
+                    "propertyOrder": 7
+                },
+                "incremental": {
+                    "type": "boolean",
+                    "title": "Incremental Load",
+                    "description": "When enabled, data is appended to the existing table. When disabled, the table is overwritten.",
+                    "default": true,
+                    "propertyOrder": 8
                 }
             }
         },
