@@ -59,6 +59,7 @@ class EnergisClient:
             logging.debug("Request body: %s", masked_body)
 
         retries = 0
+        response = None
 
         while retries < self.max_retries:
             try:
@@ -82,14 +83,20 @@ class EnergisClient:
             except Exception as e:
                 logging.error("Authentication attempt %d failed: %s", retries + 1, str(e))
 
-                xml_response = etree.fromstring(response.content)
-                fault_string = xml_response.xpath("//faultstring/text()")
+                # Only try to parse SOAP fault if we have a response
+                if response is not None:
+                    try:
+                        xml_response = etree.fromstring(response.content)
+                        fault_string = xml_response.xpath("//faultstring/text()")
 
-                if fault_string and "již v systému přihlášen" in fault_string[0]:
-                    logging.warning("User already logged in. Waiting 120 seconds before retrying...")
-                    time.sleep(self.retry_delay)
-                    retries += 1
-                    continue
+                        if fault_string and "již v systému přihlášen" in fault_string[0]:
+                            logging.warning("User already logged in. Waiting 120 seconds before retrying...")
+                            time.sleep(self.retry_delay)
+                            retries += 1
+                            response = None
+                            continue
+                    except Exception:
+                        pass  # Could not parse response, just re-raise original exception
 
                 raise e
 
