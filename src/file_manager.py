@@ -63,4 +63,4 @@ class FileManager:
 
         except Exception as e:
             logging.error("Failed to save data to CSV: %s", str(e))
-            return False
+            raise

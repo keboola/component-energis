@@ -70,3 +70,18 @@ def test_save_to_csv_empty_data(file_manager, caplog):
 
     assert result is False
     assert "No data found" in caplog.text
+
+
+def test_save_to_csv_exception_is_raised(file_manager, caplog):
+    """Tests that save_to_csv() re-raises exceptions instead of swallowing them."""
+    file_metadata = file_manager.get_file_metadata()
+
+    def failing_generator():
+        raise Exception("API error: Connection interrupted")
+        yield
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(Exception, match="API error: Connection interrupted"):
+            file_manager.save_to_csv(failing_generator(), file_metadata)
+
+    assert "Failed to save data to CSV" in caplog.text
