@@ -1,9 +1,9 @@
 import pytest
 from unittest.mock import Mock, patch
 
-from api_client import EnergisClient
-from configuration import Configuration, DatasetEnum, GranularityEnum, SyncOptions
-from utils import convert_date_to_mmddyyyyhhmm, granularity_to_short_code
+from api_client import EnergisClient, GRANULARITY_META
+from configuration import Configuration, DatasetEnum, GranularityEnum
+
 
 @pytest.fixture
 def mock_config():
@@ -32,17 +32,17 @@ def mock_config():
 
 
 @pytest.fixture
-def mock_transport():
-    """Mocks Zeep's Transport.post() method."""
-    mock_transport = Mock()
-    return mock_transport
+def mock_auth_client():
+    """Mocks httpx.Client for authentication."""
+    mock_client = Mock()
+    return mock_client
 
 
 @pytest.fixture
-def client(mock_config, mock_transport):
-    """Creates an EnergisClient instance with mocked transport."""
+def client(mock_config, mock_auth_client):
+    """Creates an EnergisClient instance with mocked auth client."""
     client = EnergisClient(mock_config)
-    client.transport = mock_transport
+    client.auth_client = mock_auth_client
     return client
 
 
@@ -55,42 +55,45 @@ def create_mock_response(status_code, content):
     return response
 
 
-def test_authenticate_success(client, mock_transport):
+def test_authenticate_success(client, mock_auth_client):
     """Tests successful authentication."""
     xml_response = """<response><key>test-api-key</key></response>"""
-    mock_transport.post.return_value = create_mock_response(200, xml_response)
+    mock_auth_client.post.return_value = create_mock_response(200, xml_response)
 
     auth_key = client.authenticate()
 
     assert auth_key == "test-api-key"
-    mock_transport.post.assert_called_once()
+    mock_auth_client.post.assert_called_once()
 
 
-def test_authenticate_failure(client, mock_transport):
+def test_authenticate_failure(client, mock_auth_client):
     """Tests authentication failure with HTTP error."""
-    mock_transport.post.return_value = create_mock_response(401, "<error>Unauthorized</error>")
+    mock_auth_client.post.return_value = create_mock_response(
+        401, "<error>Unauthorized</error>"
+    )
 
     with pytest.raises(Exception, match="Authentication failed: 401"):
         client.authenticate()
 
 
-def test_authenticate_retry_on_already_logged_in(client, mock_transport):
+def test_authenticate_retry_on_already_logged_in(client, mock_auth_client):
     """Tests authentication retry logic when user is already logged in."""
     xml_response = """<faultstring>Uživatel již v systému přihlášen</faultstring>"""
-    mock_transport.post.return_value = create_mock_response(500, xml_response)
+    mock_auth_client.post.return_value = create_mock_response(500, xml_response)
 
     with patch("time.sleep", return_value=None) as mock_sleep:
         with pytest.raises(Exception, match="Maximum retries reached"):
             client.authenticate()
 
-        assert mock_transport.post.call_count == client.max_retries
+        assert mock_auth_client.post.call_count == client.max_retries
         mock_sleep.assert_called_with(client.retry_delay)
 
 
-def test_fetch_data_success(client, mock_transport, mock_config):
-    """Tests fetching and parsing of data successfully."""
-    auth_xml = """<response><key>test-api-key</key></response>"""
-    data_xml = """
+def test_parse_xexport_response_success(client, mock_config):
+    """Tests _parse_xexport_response with valid SOAP response."""
+    mock_config.sync_options.granularity = GranularityEnum.day
+
+    xml_response = """
     <response>
         <responseData>
             <uzel>7090001</uzel>
@@ -100,49 +103,14 @@ def test_fetch_data_success(client, mock_transport, mock_config):
     </response>
     """
 
-    mock_transport.post.side_effect = [
-        create_mock_response(200, auth_xml),
-        create_mock_response(200, data_xml)
-    ]
-
-    results = list(client.fetch_data())
+    results = client._parse_xexport_response(xml_response.encode("utf-8"))
 
     assert len(results) == 1
-    assert results[0] == {
-        "uzel": "7090001",
-        "hodnota": "123.45",
-        "cas": "2025-03-06"
-    }
+    assert results[0] == {"uzel": "7090001", "hodnota": "123.45", "cas": "2025-03-06"}
 
 
-def test_fetch_data_failure(client, mock_transport):
-    """Tests handling of failed data request."""
-    auth_xml = """<response><key>test-api-key</key></response>"""
-    mock_transport.post.side_effect = [
-        create_mock_response(200, auth_xml),
-        create_mock_response(500, "Internal Server Error")
-    ]
-
-    with pytest.raises(Exception, match="Data request failed: Internal Server Error"):
-        list(client.fetch_data())
-
-
-def test_fetch_data_invalid_xml(client, mock_transport):
-    """Tests handling of invalid XML response from API."""
-    auth_xml = """<response><key>test-api-key</key></response>"""
-    invalid_xml = "<response><invalid></invalid>"
-
-    mock_transport.post.side_effect = [
-        create_mock_response(200, auth_xml),
-        create_mock_response(200, invalid_xml)
-    ]
-
-    with pytest.raises(Exception):
-        list(client.fetch_data())
-
-
-def test_send_request_success(client, mock_transport, mock_config):
-    """Tests send_request with valid SOAP response."""
+def test_parse_xexport_response_hour_granularity(client, mock_config):
+    """Tests _parse_xexport_response with hour granularity."""
     mock_config.sync_options.granularity = GranularityEnum.hour
 
     xml_response = """
@@ -154,38 +122,162 @@ def test_send_request_success(client, mock_transport, mock_config):
         </responseData>
     </response>
     """
-    mock_transport.post.return_value = create_mock_response(200, xml_response)
 
-    results = list(client.send_request("https://fake-api.com/data", "<soap_request>", {"Content-Type": "text/xml"}))
+    results = client._parse_xexport_response(xml_response.encode("utf-8"))
 
     assert len(results) == 1
     assert results[0]["cas"] == "2025-03-06 08:00"
 
 
-def test_send_request_failure(client, mock_transport):
-    """Tests handling of HTTP error response in send_request."""
-    mock_transport.post.return_value = create_mock_response(500, "Internal Server Error")
+def test_parse_xexport_response_empty(client, mock_config):
+    """Tests _parse_xexport_response with no data rows."""
+    mock_config.sync_options.granularity = GranularityEnum.day
 
-    with pytest.raises(Exception, match="Data request failed: Internal Server Error"):
-        list(client.send_request("https://fake-api.com/data", "<soap_request>", {"Content-Type": "text/xml"}))
+    xml_response = "<response></response>"
+
+    results = client._parse_xexport_response(xml_response.encode("utf-8"))
+
+    assert len(results) == 0
 
 
-def test_send_request_parsing_failure(client, mock_transport):
-    """Tests handling of parsing errors in send_request."""
-    xml_response = "<response><invalid></invalid>"
-    mock_transport.post.return_value = create_mock_response(200, xml_response)
+def test_parse_xexport_response_multiple_rows(client, mock_config):
+    """Tests _parse_xexport_response with multiple data rows."""
+    mock_config.sync_options.granularity = GranularityEnum.day
 
-    with pytest.raises(Exception):
-        list(client.send_request("https://fake-api.com/data", "<soap_request>", {"Content-Type": "text/xml"}))
+    xml_response = """
+    <response>
+        <responseData>
+            <uzel>7090001</uzel>
+            <hodnota>100.00</hodnota>
+            <cas>01.03.2025</cas>
+        </responseData>
+        <responseData>
+            <uzel>7090002</uzel>
+            <hodnota>200.00</hodnota>
+            <cas>02.03.2025</cas>
+        </responseData>
+    </response>
+    """
+
+    results = client._parse_xexport_response(xml_response.encode("utf-8"))
+
+    assert len(results) == 2
+    assert results[0]["uzel"] == "7090001"
+    assert results[1]["uzel"] == "7090002"
 
 
 def test_convert_date_to_mmddyyyyhhmm():
     """Tests correct conversion of date format."""
-    assert convert_date_to_mmddyyyyhhmm("2025-03-06") == "030620250000"
+    assert EnergisClient.convert_date_to_mmddyyyyhhmm("2025-03-06") == "030620250000"
 
 
 def test_granularity_to_short_code():
     """Tests mapping of granularity enum to short codes."""
-    assert granularity_to_short_code(GranularityEnum.year) == "r"
-    assert granularity_to_short_code(GranularityEnum.minute) == "t"
-    assert granularity_to_short_code(GranularityEnum.quarterHour) == "c"
+    assert EnergisClient.granularity_to_short_code(GranularityEnum.year) == "r"
+    assert EnergisClient.granularity_to_short_code(GranularityEnum.minute) == "t"
+    assert EnergisClient.granularity_to_short_code(GranularityEnum.quarterHour) == "c"
+
+
+def test_granularity_meta_complete_coverage():
+    """Ensures all GranularityEnum values have metadata in GRANULARITY_META."""
+    for granularity in GranularityEnum:
+        assert granularity in GRANULARITY_META, f"Missing metadata for {granularity}"
+        meta = GRANULARITY_META[granularity]
+        assert isinstance(meta.short_code, str) and len(meta.short_code) == 1
+        assert isinstance(meta.points_per_day, int) and meta.points_per_day > 0
+
+
+class TestFormatDatetime:
+    """Tests for format_datetime static method."""
+
+    def test_year_passthrough(self):
+        """Year granularity returns value unchanged."""
+        assert EnergisClient.format_datetime("2025", GranularityEnum.year) == "2025"
+
+    def test_quarter_year_roman_numerals(self):
+        """QuarterYear converts roman numerals to Q1-Q4 format."""
+        assert (
+            EnergisClient.format_datetime("I/2025", GranularityEnum.quarterYear)
+            == "Q1/2025"
+        )
+        assert (
+            EnergisClient.format_datetime("II/2025", GranularityEnum.quarterYear)
+            == "Q2/2025"
+        )
+        assert (
+            EnergisClient.format_datetime("III/2025", GranularityEnum.quarterYear)
+            == "Q3/2025"
+        )
+        assert (
+            EnergisClient.format_datetime("IV/2025", GranularityEnum.quarterYear)
+            == "Q4/2025"
+        )
+
+    def test_quarter_year_unknown_quarter(self):
+        """QuarterYear with unknown quarter token passes through unchanged."""
+        assert (
+            EnergisClient.format_datetime("V/2025", GranularityEnum.quarterYear)
+            == "V/2025"
+        )
+
+    def test_month_passthrough(self):
+        """Month granularity returns value unchanged."""
+        assert (
+            EnergisClient.format_datetime("01/2025", GranularityEnum.month) == "01/2025"
+        )
+
+    def test_day_format_conversion(self):
+        """Day converts DD.MM.YYYY to YYYY-MM-DD."""
+        assert (
+            EnergisClient.format_datetime("06.03.2025", GranularityEnum.day)
+            == "2025-03-06"
+        )
+        assert (
+            EnergisClient.format_datetime("31.12.2024", GranularityEnum.day)
+            == "2024-12-31"
+        )
+
+    def test_hour_without_minutes(self):
+        """Hour granularity with hour range (no minutes) adds :00."""
+        assert (
+            EnergisClient.format_datetime("06.03.2025 08-09", GranularityEnum.hour)
+            == "2025-03-06 08:00"
+        )
+        assert (
+            EnergisClient.format_datetime("06.03.2025 23-00", GranularityEnum.hour)
+            == "2025-03-06 23:00"
+        )
+
+    def test_quarter_hour_with_minutes(self):
+        """QuarterHour granularity with time range preserves minutes."""
+        assert (
+            EnergisClient.format_datetime(
+                "06.03.2025 08:15-08:30", GranularityEnum.quarterHour
+            )
+            == "2025-03-06 08:15"
+        )
+        assert (
+            EnergisClient.format_datetime(
+                "06.03.2025 23:45-00:00", GranularityEnum.quarterHour
+            )
+            == "2025-03-06 23:45"
+        )
+
+    def test_minute_with_minutes(self):
+        """Minute granularity with time range preserves minutes."""
+        assert (
+            EnergisClient.format_datetime(
+                "06.03.2025 08:01-08:02", GranularityEnum.minute
+            )
+            == "2025-03-06 08:01"
+        )
+
+    def test_day_invalid_date_raises(self):
+        """Day granularity with invalid date raises ValueError."""
+        with pytest.raises(ValueError):
+            EnergisClient.format_datetime("31.02.2025", GranularityEnum.day)
+
+    def test_hour_missing_time_part_raises(self):
+        """Hour granularity without time part raises ValueError."""
+        with pytest.raises(ValueError):
+            EnergisClient.format_datetime("06.03.2025", GranularityEnum.hour)

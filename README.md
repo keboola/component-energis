@@ -58,9 +58,9 @@ For a full breakdown of configuration options, refer to the [Configuration Docum
 
 | **Property**        | **Required** | **Type**     | **Default** | **Description** |
 |--------------------|------------|------------|------------|---------------|
-| `authentication.username` | ✅ Yes | String | _(None)_ | Username for API authentication. |
-| `authentication.#password` | ✅ Yes | String (password) | _(None)_ | Password for API authentication. |
-| `authentication.environment` | ✅ Yes | Enum (`dev` / `prod`) | `prod` | Selects the API environment (development or production). |
+| `authentication.username` | Yes | String | _(None)_ | Username for API authentication. |
+| `authentication.#password` | Yes | String (password) | _(None)_ | Password for API authentication. |
+| `authentication.environment` | Yes | Enum (`dev` / `prod`) | `prod` | Selects the API environment (development or production). |
 
 > Note: Dev environment points to https://webenergis.eu/test/1.wsc/soap.r and prod one to: https://bilance.c-energy.cz/cgi-bin/1.wsc/soap.r
 
@@ -68,17 +68,17 @@ For a full breakdown of configuration options, refer to the [Configuration Docum
 
 | **Property**        | **Required** | **Type**     | **Default**  | **Description**                                                                               |
 |--------------------|------------|------------|--------------|-----------------------------------------------------------------------------------------------|
-| `sync_options.dataset` | ✅ Yes | Enum (`xexport`) | `xexport`    | Specifies the dataset for extraction.                                                         |
-| `sync_options.nodes` | ✅ Yes | Array of Integers | `[]`         | List of node IDs for data retrieval.                                                          |
-| `sync_options.date_from` | ✅ Yes | Date (`YYYY-MM-DD`) | `2024-12-01` | Start date for data extraction.                                                               |
-| `sync_options.date_to` | ❌ No | Date (`YYYY-MM-DD`) | _(Today)_    | End date for data extraction. If not set, defaults to today.                                  |
-| `sync_options.granularity` | ✅ Yes | Enum (`year`, `quarterYear`, `month`, `day`, `hour`, `quarterHour`, `minute`) | `day`        | Defines data granularity for extraction.                                                      |
-| `sync_options.reload_full_data` | ❌ No | Boolean| _False_      | When enabled, retrieves the complete dataset from 'date_from', bypassing incremental loading. |
+| `sync_options.dataset` | Yes | Enum (`xexport`) | `xexport`    | Specifies the dataset for extraction.                                                         |
+| `sync_options.nodes` | Yes | Array of Integers | `[]`         | List of node IDs for data retrieval.                                                          |
+| `sync_options.date_from` | Yes | Date (`YYYY-MM-DD`) | `2024-12-01` | Start date for data extraction.                                                               |
+| `sync_options.date_to` | No | Date (`YYYY-MM-DD`) | _(Today)_    | End date for data extraction. If not set, defaults to today.                                  |
+| `sync_options.granularity` | Yes | Enum (`year`, `quarterYear`, `month`, `day`, `hour`, `quarterHour`, `minute`) | `day`        | Defines data granularity for extraction.                                                      |
+| `sync_options.reload_full_data` | No | Boolean| _False_      | When enabled, retrieves the complete dataset from 'date_from', bypassing incremental loading. |
 
 ### **Debug Mode**
 | **Property** | **Required** | **Type** | **Default** | **Description** |
 |-------------|--------------|--------|------------|---------------|
-| `debug` | ❌ No         | Boolean | `false` | Enables debug mode for additional logging. |
+| `debug` | No         | Boolean | `false` | Enables debug mode for additional logging. |
 
 ---
 
@@ -92,10 +92,50 @@ For the exact output schema, refer to the [Output Schema Documentation](#).
 
 ## **Development**
 
+This component uses **Python 3.13** and **UV** for dependency management.
+
 ### **Running Locally**
+
+Build and run using Docker:
+
+```bash
+docker-compose build
+docker-compose run --rm dev
+```
+
 To customize the local data folder path, modify the `docker-compose.yml` file:
 
 ```yaml
 volumes:
   - ./:/code
   - ./CUSTOM_FOLDER:/data
+```
+
+Or use the provided script:
+
+```bash
+./scripts/build_n_test.sh
+```
+
+### **Running Tests**
+
+```bash
+# Using Docker (recommended, matches CI)
+docker-compose run --rm dev python -m pytest tests/
+
+# Or locally with UV
+uv run python -m pytest tests/
+```
+
+### **Linting**
+
+```bash
+# Flake8 (used in CI)
+docker-compose run --rm dev flake8 . --config=flake8.cfg
+```
+
+---
+
+## **Integration**
+
+This component integrates with **Keboola Connection** and is available in the Keboola marketplace.

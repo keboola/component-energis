@@ -48,12 +48,17 @@
                 },
                 "nodes": {
                     "type": "array",
-                    "title": "List of Nodes",
                     "items": {
                         "type": "integer",
                         "title": "Node ID"
                     },
+                    "options": {
+                        "tags": true
+                    },
+                    "title": "List of Nodes",
+                    "format": "select",
                     "default": [],
+                    "uniqueItems": true,
                     "propertyOrder": 2
                 },
                 "date_from": {
